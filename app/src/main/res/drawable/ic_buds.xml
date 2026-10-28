@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two earbuds joined by a headband. Monochrome so the system can tint it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,10.5a3.5,3.5 0 1,0 0,7a3.5,3.5 0 1,0 0,-7z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M17,10.5a3.5,3.5 0 1,0 0,7a3.5,3.5 0 1,0 0,-7z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:pathData="M7,10.5 C7,4 17,4 17,10.5" />
+</vector>

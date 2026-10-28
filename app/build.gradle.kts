@@ -41,7 +41,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

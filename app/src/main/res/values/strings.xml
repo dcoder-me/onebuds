@@ -1,4 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Buds Battery</string>
+    <string name="tile_label">Realme Buds</string>
+    <string name="channel_name">Battery</string>
+    <string name="widget_description">Realme Buds battery</string>
+
+    <string name="reading_battery">Reading battery…</string>
+    <string name="no_reading">No values yet</string>
+
+    <string name="no_buds_selected">No buds selected yet</string>
+    <string name="buds_selected">Buds selected</string>
+    <string name="select_buds">Select buds</string>
+    <string name="allow_permissions">Allow permissions</string>
+    <string name="add_tile">Add tile</string>
+    <string name="read_now">Read now</string>
+    <string name="show_app_icon">Show app icon</string>
+
+    <string name="select_buds_first">Select your buds first.</string>
+    <string name="read_failed">Couldn\'t read buds. Try again.</string>
+    <string name="add_tile_failed">Couldn\'t add tile. Try again.</string>
+    <string name="association_failed">Couldn\'t save buds. Try again.</string>
 </resources>

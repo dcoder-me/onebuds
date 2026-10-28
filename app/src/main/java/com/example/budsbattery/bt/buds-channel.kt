@@ -117,21 +117,41 @@ suspend fun runSessionWithTimeout(socket: BluetoothSocket, onReading: suspend (B
         heard.get()
     }
 
+/** What one vendor-channel read found. connected tells "buds refused" apart from "buds stayed silent". */
+data class VendorReadResult(val reading: BatteryReading?, val connected: Boolean)
+
 /**
- * Reads the buds once, for the "Read now" button in setup.
+ * Reads the buds once over the vendor channel, for the "Read now" button in setup.
  *
  * @param adapter - Bluetooth adapter of the phone
  * @param address - MAC address of the buds
- * @returns the first reading, or null if the buds could not be reached or did not answer
+ * @returns the first reading if any, and whether the channel opened at all
  */
-suspend fun readBatteryOnce(adapter: BluetoothAdapter, address: String): BatteryReading? {
-    val socket = connectToBuds(adapter, address) ?: return null
+suspend fun readBatteryOnce(adapter: BluetoothAdapter, address: String): VendorReadResult {
+    val socket = connectToBuds(adapter, address) ?: return VendorReadResult(null, connected = false)
     val reading = AtomicReference<BatteryReading?>(null)
     runSessionWithTimeout(socket) { value ->
         reading.set(value)
         socket.close()
     }
-    return reading.get()
+    return VendorReadResult(reading.get(), connected = true)
+}
+
+/**
+ * Tells whether the buds list the vendor channel in their service records (SDP, cached by Android).
+ *
+ * @param adapter - Bluetooth adapter of the phone
+ * @param address - MAC address of the buds
+ * @returns true or false, or null when Android has no cached record or permission is missing
+ */
+fun offersVendorChannel(adapter: BluetoothAdapter, address: String): Boolean? = try {
+    adapter.getRemoteDevice(address).uuids?.any { it.uuid == BUDS_CHANNEL_UUIDS.first() }
+} catch (error: SecurityException) {
+    Log.w(TAG, "Bluetooth permission missing", error)
+    null
+} catch (error: IllegalArgumentException) {
+    Log.w(TAG, "Bad address $address", error)
+    null
 }
 
 private fun openBudsSocket(adapter: BluetoothAdapter, address: String, uuid: UUID): BluetoothSocket {

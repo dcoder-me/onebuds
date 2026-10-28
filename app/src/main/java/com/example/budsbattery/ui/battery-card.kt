@@ -103,6 +103,7 @@ private fun ReadNowButton() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var reading by remember { mutableStateOf(false) }
+    var failure by remember { mutableStateOf<String?>(null) }
 
     Button(
         enabled = !reading,
@@ -110,8 +111,9 @@ private fun ReadNowButton() {
         onClick = {
             scope.launch {
                 reading = true
+                failure = null
                 try {
-                    readNow(context)
+                    failure = readNow(context)
                 } finally {
                     reading = false
                 }
@@ -124,5 +126,14 @@ private fun ReadNowButton() {
         } else {
             Text(stringResource(R.string.read_now))
         }
+    }
+    // Says which route failed and how, so the fix is clear without a laptop
+    failure?.let { text ->
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }

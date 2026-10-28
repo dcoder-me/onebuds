@@ -8,7 +8,9 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
 import com.example.budsbattery.R
+import com.example.budsbattery.bt.FAST_PAIR_SCAN_MS
 import com.example.budsbattery.bt.connectToBuds
+import com.example.budsbattery.bt.scanFastPairBattery
 import com.example.budsbattery.bt.runSessionWithTimeout
 import com.example.budsbattery.data.readSelectedAddress
 import com.example.budsbattery.data.saveConnected
@@ -84,7 +86,7 @@ class BatteryReadService : Service() {
         }
     }
 
-    // Returns once a session has heard the buds, or after the last retry fails
+    // Returns once a session has heard the buds; after the last retry, falls back to the Fast Pair broadcast
     private suspend fun connectUntilHeard(adapter: BluetoothAdapter, address: String) {
         for (wait in ATTEMPT_WAITS_MS) {
             delay(wait)
@@ -92,5 +94,6 @@ class BatteryReadService : Service() {
             val heard = runSessionWithTimeout(socket) { reading -> publishReading(applicationContext, reading) }
             if (heard) return
         }
+        scanFastPairBattery(adapter, FAST_PAIR_SCAN_MS).reading?.let { publishReading(applicationContext, it) }
     }
 }

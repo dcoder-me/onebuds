@@ -19,28 +19,25 @@
 
     <string name="setup_title">Setup</string>
     <string name="step_permissions_title">Allow permissions</string>
-    <string name="step_permissions_body">Bluetooth to talk to the buds, notifications to show battery.</string>
-    <string name="step_buds_title">Choose your buds</string>
-    <string name="step_buds_body">Pick your Realme Buds from your paired devices.</string>
-    <string name="step_buds_done">Selected: %1$s</string>
+    <string name="step_permissions_body">Bluetooth and nearby devices to read the buds, notifications to show battery.</string>
+    <string name="step_buds_title">Your buds</string>
+    <string name="step_buds_body">Connect your buds to the phone, then tap Detect.</string>
+    <string name="step_buds_found">%1$s · connected. Link it so battery reads by itself.</string>
+    <string name="step_buds_linked">%1$s · auto-read on</string>
     <string name="step_tile_title">Add Quick Settings tile</string>
     <string name="step_tile_body">See battery from the pull-down panel.</string>
     <string name="action_allow">Allow</string>
-    <string name="action_choose">Choose</string>
-    <string name="action_change">Change</string>
+    <string name="action_detect">Detect</string>
+    <string name="action_link">Link</string>
     <string name="action_add">Add</string>
     <string name="show_app_icon">Show app icon</string>
     <string name="show_app_icon_body">Off hides it from the home screen. Long-press the tile to come back here.</string>
 
-    <string name="select_buds_first">Choose your buds first</string>
+    <string name="connect_buds_first">Connect your buds first</string>
     <string name="allow_permissions_first">Allow permissions first</string>
     <string name="allow_in_settings">Allow Bluetooth in Settings</string>
-    <string name="read_failed">Couldn\'t read buds. Wear them and try again.</string>
     <string name="add_tile_failed">Couldn\'t add tile. Try again.</string>
     <string name="tile_added">Tile added</string>
-    <string name="association_failed">Couldn\'t save buds. Try again.</string>
     <string name="auto_read_failed">Auto-read not linked. Read now still works.</string>
-    <string name="pick_buds_title">Choose your buds</string>
-    <string name="no_paired_devices">Pair your buds in Bluetooth settings first</string>
-    <string name="action_cancel">Cancel</string>
+
 </resources>

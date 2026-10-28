@@ -4,6 +4,10 @@
     <uses-feature android:name="android.software.companion_device_setup" />
 
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Only to hear the Fast Pair battery broadcast; never used to find location -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />

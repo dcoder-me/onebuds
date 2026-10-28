@@ -26,6 +26,17 @@ fun formatBatteryLine(reading: BatteryReading): String = listOfNotNull(
 ).joinToString(SEPARATOR)
 
 /**
+ * Builds the tiny status-bar chip text of the Live Update. The chip is at most 96dp wide, so buds only.
+ *
+ * @param reading - the values to show
+ * @returns text such as "L80 R75", or an empty string when neither bud is known
+ */
+fun formatChipText(reading: BatteryReading): String = listOfNotNull(
+    reading.left?.let { "L${it.percent}" },
+    reading.right?.let { "R${it.percent}" },
+).joinToString(" ")
+
+/**
  * Builds the tile subtitle. Shows the age of old values when the buds are gone.
  *
  * @param state - saved values and connection flag

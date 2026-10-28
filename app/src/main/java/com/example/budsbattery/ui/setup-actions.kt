@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothManager
 import android.companion.AssociationInfo
 import android.companion.CompanionDeviceManager
 import android.companion.DeviceNotAssociatedException
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.PairedDevice
@@ -24,9 +26,16 @@ import com.example.budsbattery.bt.buildBudsAssociationRequest
 import com.example.budsbattery.bt.findConnectedBuds
 import com.example.budsbattery.bt.readBatteryAnyRoute
 import com.example.budsbattery.bt.saveAssociation
+import com.example.budsbattery.data.batteryStateFlow
+import com.example.budsbattery.data.readBatteryState
 import com.example.budsbattery.data.saveSelectedAddress
 import com.example.budsbattery.service.hasBluetoothPermission
 import com.example.budsbattery.service.publishReading
+import com.example.budsbattery.service.startBatteryRead
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+
+private const val REFRESH_WAIT_MS = 10_000L
 
 /** Permissions asked for in setup. */
 val SETUP_PERMISSIONS = arrayOf(
@@ -134,7 +143,33 @@ fun requestTile(context: Context) {
 }
 
 /**
- * Reads the connected buds once over every route and saves the values. The battery card updates itself.
+ * Tells whether Android 16 lets the battery notification be pinned at the top as a Live Update.
+ *
+ * @param context - any context
+ * @returns true when promoted notifications are allowed for this app
+ */
+fun canPinToTop(context: Context): Boolean = NotificationManagerCompat.from(context).canPostPromotedNotifications()
+
+/**
+ * Opens the system page where the user allows Live Updates for this app.
+ *
+ * @param context - activity context
+ */
+fun openPinSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    // Some phones lack this page; the app's notification settings are the closest fallback
+    try {
+        context.startActivity(intent)
+    } catch (error: ActivityNotFoundException) {
+        context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+        )
+    }
+}
+
+/**
+ * Gets fresh values now. Asks the running sync first; if it has nothing new, reads directly over every route.
  *
  * @param context - app context
  * @returns why the read failed, one line per route, or null when it worked or could not start
@@ -150,10 +185,23 @@ suspend fun readNow(context: Context): String? {
         showToast(context, R.string.connect_buds_first)
         return null
     }
+    if (refreshRunningSync(context)) return null
     val report = readBatteryAnyRoute(adapter, buds.address)
     val reading = report.reading ?: return formatReadFailure(report)
     publishReading(context, reading)
+    startBatteryRead(context)
     return null
+}
+
+// The sync owns the buds' channel while it runs, so a direct read would be refused; ask it instead
+private suspend fun refreshRunningSync(context: Context): Boolean {
+    val before = readBatteryState(context)
+    if (!before.connected) return false
+    startBatteryRead(context, refresh = true)
+    val fresh = withTimeoutOrNull(REFRESH_WAIT_MS) {
+        batteryStateFlow(context).first { it.snapshot?.savedAtMillis != before.snapshot?.savedAtMillis }
+    }
+    return fresh != null
 }
 
 /**

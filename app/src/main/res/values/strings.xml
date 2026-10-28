@@ -26,6 +26,10 @@
     <string name="step_buds_linked">%1$s · auto-read on</string>
     <string name="step_tile_title">Add Quick Settings tile</string>
     <string name="step_tile_body">See battery from the pull-down panel.</string>
+    <string name="step_pin_title">Pin to top</string>
+    <string name="step_pin_body">Allow Live Updates so battery stays at the top with a status-bar chip.</string>
+    <string name="step_pin_done">Live Updates allowed.</string>
+    <string name="notification_title">Realme Buds · connected</string>
     <string name="action_allow">Allow</string>
     <string name="action_detect">Detect</string>
     <string name="action_link">Link</string>

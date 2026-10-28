@@ -10,7 +10,6 @@ import com.example.budsbattery.data.readBatteryState
 import com.example.budsbattery.data.saveSnapshot
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
-import com.example.budsbattery.ui.notificationTextFor
 import com.example.budsbattery.ui.updateBatteryNotification
 
 /**
@@ -33,5 +32,5 @@ suspend fun refreshSurfaces(context: Context) {
     val state = readBatteryState(context)
     TileService.requestListeningState(context, ComponentName(context, BudsTileService::class.java))
     BudsWidget().updateAll(context)
-    if (state.connected) updateBatteryNotification(context, notificationTextFor(context, state))
+    if (state.connected) updateBatteryNotification(context, state)
 }

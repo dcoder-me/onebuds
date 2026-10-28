@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.PairedDevice
+import com.example.budsbattery.service.startBatteryRead
 import kotlinx.coroutines.launch
 
 private val ROW_PADDING = 16.dp
@@ -41,7 +42,7 @@ private val ROW_GAP = 12.dp
 private val BADGE_SIZE = 28.dp
 private const val DONE_MARK = "✓"
 
-/** The three one-time setup steps in one card. */
+/** The one-time setup steps in one card. */
 @Composable
 fun SetupStepsCard() {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -50,6 +51,8 @@ fun SetupStepsCard() {
         BudsStep()
         HorizontalDivider()
         TileStep()
+        HorizontalDivider()
+        PinStep()
     }
 }
 
@@ -80,6 +83,11 @@ fun IconCard() {
 private fun PermissionStep() {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasSetupPermissions(context)) }
+    // Re-checked on every return, so a permission granted in Settings shows as done
+    LifecycleResumeEffect(Unit) {
+        granted = hasSetupPermissions(context)
+        onPauseOrDispose { }
+    }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         granted = hasSetupPermissions(context)
         // Android hides the dialog after two denials, so the only way left is Settings
@@ -104,17 +112,22 @@ private fun BudsStep() {
     val scope = rememberCoroutineScope()
     var buds by remember { mutableStateOf<PairedDevice?>(null) }
     var linked by remember { mutableStateOf(false) }
+    // Finding the buds also starts the sync, so opening the app is enough to get live values
+    val refresh: suspend () -> Unit = {
+        val found = detectBuds(context)
+        buds = found
+        linked = found?.let { isLinked(context, it.address) } ?: false
+        if (found != null) startBatteryRead(context)
+    }
+    LifecycleResumeEffect(Unit) {
+        val job = scope.launch { refresh() }
+        onPauseOrDispose { job.cancel() }
+    }
     val detect: () -> Unit = {
         scope.launch {
-            buds = detectBuds(context)
-            linked = buds?.let { isLinked(context, it.address) } ?: false
+            refresh()
             if (buds == null) showToast(context, R.string.connect_buds_first)
         }
-    }
-    // Detects on open, so connected buds show up without a tap
-    LaunchedEffect(Unit) {
-        buds = detectBuds(context)
-        linked = buds?.let { isLinked(context, it.address) } ?: false
     }
 
     val onLinked: (AssociationInfo) -> Unit = { info ->
@@ -161,6 +174,24 @@ private fun TileStep() {
         done = false,
         actionLabel = stringResource(R.string.action_add),
         onAction = { requestTile(context) },
+    )
+}
+
+@Composable
+private fun PinStep() {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(canPinToTop(context)) }
+    LifecycleResumeEffect(Unit) {
+        allowed = canPinToTop(context)
+        onPauseOrDispose { }
+    }
+    StepRow(
+        number = 4,
+        title = stringResource(R.string.step_pin_title),
+        body = stringResource(if (allowed) R.string.step_pin_done else R.string.step_pin_body),
+        done = allowed,
+        actionLabel = stringResource(R.string.action_allow),
+        onAction = { openPinSettings(context) },
     )
 }
 

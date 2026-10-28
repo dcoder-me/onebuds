@@ -7,13 +7,19 @@ import android.service.quicksettings.TileService
 import com.example.budsbattery.R
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.readBatteryState
+import com.example.budsbattery.service.startBatteryRead
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** Quick Settings tile. Greyed out while the buds are away, with the last values and their age. */
+/**
+ * Quick Settings tile. Lit while the buds are connected; dim but tappable with the last values when not.
+ *
+ * @description Not an "active" tile: Android binds it each time the panel opens, so it always shows
+ * the saved values. The sync also calls requestListeningState after each new reading.
+ */
 class BudsTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -22,10 +28,15 @@ class BudsTileService : TileService() {
         scope.launch { renderTile(readBatteryState(applicationContext)) }
     }
 
-    // === NOTE: === Tap opens setup, so a revoked permission has an obvious fix
+    // Connected: ask the sync for fresh values. Not connected: open the app, where the fix is
     override fun onClick() {
-        val setup = Intent(this, SetupActivity::class.java)
-        startActivityAndCollapse(PendingIntent.getActivity(this, 0, setup, PendingIntent.FLAG_IMMUTABLE))
+        scope.launch {
+            if (readBatteryState(applicationContext).connected) {
+                startBatteryRead(applicationContext, refresh = true)
+            } else {
+                openSetup()
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -33,9 +44,15 @@ class BudsTileService : TileService() {
         super.onDestroy()
     }
 
+    private fun openSetup() {
+        val setup = Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivityAndCollapse(PendingIntent.getActivity(this, 0, setup, PendingIntent.FLAG_IMMUTABLE))
+    }
+
     private fun renderTile(state: BatteryState) {
         val tile = qsTile ?: return
-        tile.state = if (state.connected) Tile.STATE_ACTIVE else Tile.STATE_UNAVAILABLE
+        // INACTIVE, not UNAVAILABLE: an unavailable tile ignores taps
+        tile.state = if (state.connected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.tile_label)
         tile.subtitle = formatTileSubtitle(state, System.currentTimeMillis())
         tile.updateTile()

@@ -18,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -34,6 +36,7 @@ private const val READ_CHUNK_BYTES = 256
 private const val BYTE_MASK = 0xFF
 private const val SUBSCRIBE_SEQ = 0
 private const val REQUEST_SEQ = 1
+private const val SEQ_MASK = 0xFF
 
 /**
  * Opens the control channel. Returns null instead of throwing, so callers can retry.
@@ -62,13 +65,18 @@ private fun tryOpenBudsSocket(adapter: BluetoothAdapter, address: String, uuid: 
 }
 
 /**
- * Asks for battery once, then reads every frame the buds send until the channel closes.
+ * Subscribes to battery pushes and asks once, then asks again on each signal, reading every frame until the channel closes.
  *
  * @param socket - connected control channel
+ * @param requests - each emission sends one more battery request (pull refresh while connected)
  * @param onReading - called for each battery reading
  * @throws IOException when the buds drop the channel
  */
-suspend fun runBudsSession(socket: BluetoothSocket, onReading: suspend (BatteryReading) -> Unit) = coroutineScope {
+suspend fun runBudsSession(
+    socket: BluetoothSocket,
+    requests: Flow<Unit> = emptyFlow(),
+    onReading: suspend (BatteryReading) -> Unit,
+) = coroutineScope {
     // Cancelling the session must close the socket, or the blocking read never returns
     val closeOnCancel = launch(Dispatchers.IO) {
         try {
@@ -77,15 +85,23 @@ suspend fun runBudsSession(socket: BluetoothSocket, onReading: suspend (BatteryR
             socket.close()
         }
     }
-    try {
-        withContext(Dispatchers.IO) {
-            val output = socket.outputStream
-            output.write(encodeBatterySubscription(SUBSCRIBE_SEQ))
-            output.write(encodeBatteryRequest(REQUEST_SEQ))
+    // All writes stay on this one coroutine, so frames never interleave on the stream
+    val writer = launch(Dispatchers.IO) {
+        val output = socket.outputStream
+        output.write(encodeBatterySubscription(SUBSCRIBE_SEQ))
+        output.write(encodeBatteryRequest(REQUEST_SEQ))
+        output.flush()
+        var seq = REQUEST_SEQ
+        requests.collect {
+            seq = (seq + 1) and SEQ_MASK
+            output.write(encodeBatteryRequest(seq))
             output.flush()
-            readFrames(socket.inputStream, onReading)
         }
+    }
+    try {
+        withContext(Dispatchers.IO) { readFrames(socket.inputStream, onReading) }
     } finally {
+        writer.cancel()
         closeOnCancel.cancel()
     }
 }
@@ -94,10 +110,15 @@ suspend fun runBudsSession(socket: BluetoothSocket, onReading: suspend (BatteryR
  * Runs one session. Closes the channel if the buds stay silent for too long.
  *
  * @param socket - connected control channel; always closed when this returns
+ * @param requests - each emission sends one more battery request
  * @param onReading - called for each battery reading
  * @returns true if the buds sent at least one reading
  */
-suspend fun runSessionWithTimeout(socket: BluetoothSocket, onReading: suspend (BatteryReading) -> Unit): Boolean =
+suspend fun runSessionWithTimeout(
+    socket: BluetoothSocket,
+    requests: Flow<Unit> = emptyFlow(),
+    onReading: suspend (BatteryReading) -> Unit,
+): Boolean =
     coroutineScope {
         val heard = AtomicBoolean(false)
         val watchdog = launch(Dispatchers.IO) {
@@ -105,7 +126,7 @@ suspend fun runSessionWithTimeout(socket: BluetoothSocket, onReading: suspend (B
             if (!heard.get()) socket.close()
         }
         try {
-            runBudsSession(socket) { reading ->
+            runBudsSession(socket, requests) { reading ->
                 heard.set(true)
                 onReading(reading)
             }

@@ -61,6 +61,13 @@ class BatteryFormatTest {
     }
 
     @Test
+    fun `chip shows only the buds, short`() {
+        assertEquals("L80 R75", formatChipText(fullReading))
+        assertEquals("R75", formatChipText(fullReading.copy(left = null)))
+        assertEquals("", formatChipText(BatteryReading(null, null, BatteryLevel(60, false))))
+    }
+
+    @Test
     fun `status line says how fresh the values are`() {
         val fresh = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS), connected = true)
         val old = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS - 2 * HOUR_MS), connected = false)

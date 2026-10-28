@@ -2,6 +2,7 @@ package com.example.budsbattery.ui
 
 import android.companion.AssociationInfo
 import android.companion.CompanionDeviceManager
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,7 +34,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.budsbattery.R
+import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.data.readSelectedAddress
+import com.example.budsbattery.data.saveSelectedAddress
+import com.example.budsbattery.service.hasBluetoothPermission
 import kotlinx.coroutines.launch
 
 private val ROW_PADDING = 16.dp
@@ -103,26 +107,46 @@ private fun BudsStep() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var address by remember { mutableStateOf<String?>(null) }
+    var devices by remember { mutableStateOf<List<PairedDevice>?>(null) }
     LaunchedEffect(Unit) { address = readSelectedAddress(context) }
 
-    val onPicked: (AssociationInfo) -> Unit = { info ->
-        scope.launch { savePickedBuds(context, info)?.let { address = it } }
-    }
-    val pickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+    val onLinked: (AssociationInfo) -> Unit = { info -> scope.launch { savePickedBuds(context, info) } }
+    val linkLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         result.data?.getParcelableExtra(CompanionDeviceManager.EXTRA_ASSOCIATION, AssociationInfo::class.java)
-            ?.let(onPicked)
+            ?.let(onLinked)
     }
+    val onPick: (PairedDevice) -> Unit = { device ->
+        devices = null
+        scope.launch {
+            // Saved before the link step, so Read now works even if Android refuses the link
+            saveSelectedAddress(context, device.address)
+            address = device.address
+            linkBuds(context, device.address, { sender -> linkLauncher.launch(IntentSenderRequest.Builder(sender).build()) }, onLinked)
+        }
+    }
+
+    devices?.let { BudsPickerDialog(it, onPick, onDismiss = { devices = null }) }
     StepRow(
         number = 2,
         title = stringResource(R.string.step_buds_title),
-        body = address?.let { stringResource(R.string.step_buds_done, it) } ?: stringResource(R.string.step_buds_body),
+        body = address?.let { stringResource(R.string.step_buds_done, budsLabelFor(context, it)) }
+            ?: stringResource(R.string.step_buds_body),
         done = address != null,
         actionLabel = stringResource(if (address == null) R.string.action_choose else R.string.action_change),
-        onAction = {
-            startBudsPicker(context, { sender -> pickerLauncher.launch(IntentSenderRequest.Builder(sender).build()) }, onPicked)
-        },
+        onAction = { devices = pairedDevicesOrToast(context) },
         redoable = true,
     )
+}
+
+// Returns null (no dialog) and explains why when there is nothing to pick from
+private fun pairedDevicesOrToast(context: Context): List<PairedDevice>? {
+    if (!hasBluetoothPermission(context)) {
+        showToast(context, R.string.allow_permissions_first)
+        return null
+    }
+    val devices = pairedDevicesFor(context)
+    if (devices.isEmpty()) showToast(context, R.string.no_paired_devices)
+    return devices.ifEmpty { null }
 }
 
 @Composable

@@ -17,7 +17,10 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.example.budsbattery.R
+import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.bt.buildBudsAssociationRequest
+import com.example.budsbattery.bt.listPairedDevices
+import com.example.budsbattery.bt.pairedDeviceName
 import com.example.budsbattery.bt.readBatteryOnce
 import com.example.budsbattery.bt.saveAssociation
 import com.example.budsbattery.data.readSelectedAddress
@@ -62,23 +65,44 @@ suspend fun savePickedBuds(context: Context, info: AssociationInfo): String? = t
 }
 
 /**
- * Opens the system device picker.
+ * Asks Android to link the app to the picked buds, so it wakes the app when they connect.
+ * Read now works without this link; only the automatic read needs it.
  *
  * @param context - activity context
- * @param launch - starts the picker screen Android hands back
- * @param onPicked - called with the new association
+ * @param address - MAC address of the picked buds
+ * @param launch - starts the confirm screen Android hands back
+ * @param onLinked - called with the new association
  */
-fun startBudsPicker(context: Context, launch: (IntentSender) -> Unit, onPicked: (AssociationInfo) -> Unit) {
+fun linkBuds(context: Context, address: String, launch: (IntentSender) -> Unit, onLinked: (AssociationInfo) -> Unit) {
     val callback = object : CompanionDeviceManager.Callback() {
         override fun onAssociationPending(intentSender: IntentSender) = launch(intentSender)
 
-        override fun onAssociationCreated(associationInfo: AssociationInfo) = onPicked(associationInfo)
+        override fun onAssociationCreated(associationInfo: AssociationInfo) = onLinked(associationInfo)
 
-        override fun onFailure(error: CharSequence?) = showToast(context, R.string.association_failed)
+        override fun onFailure(error: CharSequence?) = showToast(context, R.string.auto_read_failed)
     }
     context.getSystemService(CompanionDeviceManager::class.java)
-        .associate(buildBudsAssociationRequest(), ContextCompat.getMainExecutor(context), callback)
+        .associate(buildBudsAssociationRequest(address), ContextCompat.getMainExecutor(context), callback)
 }
+
+/**
+ * Lists paired devices for the picker dialog.
+ *
+ * @param context - any context
+ * @returns paired devices, likely buds first; empty without permission
+ */
+fun pairedDevicesFor(context: Context): List<PairedDevice> =
+    context.getSystemService(BluetoothManager::class.java)?.adapter?.let(::listPairedDevices).orEmpty()
+
+/**
+ * Finds the display name of the saved buds.
+ *
+ * @param context - any context
+ * @param address - saved MAC address
+ * @returns the paired name, or the address when the name is unknown
+ */
+fun budsLabelFor(context: Context, address: String): String =
+    context.getSystemService(BluetoothManager::class.java)?.adapter?.let { pairedDeviceName(it, address) } ?: address
 
 /**
  * Asks the system to add the tile to Quick Settings, then toasts the result.

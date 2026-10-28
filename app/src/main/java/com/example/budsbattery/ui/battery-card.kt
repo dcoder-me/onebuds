@@ -37,6 +37,7 @@ private val GAUGE_STROKE = 8.dp
 private val SPINNER_SIZE = 18.dp
 private val SPINNER_STROKE = 2.dp
 private const val FULL_PERCENT = 100f
+private const val TRACK_ALPHA = 0.15f
 
 /** Live battery values with a button to read them now. */
 @Composable
@@ -78,7 +79,7 @@ private fun BatteryGauge(label: String, level: BatteryLevel?) {
                 progress = { (level?.percent ?: 0) / FULL_PERCENT },
                 modifier = Modifier.size(GAUGE_SIZE),
                 strokeWidth = GAUGE_STROKE,
-                trackColor = MaterialTheme.colorScheme.surface,
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = TRACK_ALPHA),
             )
             Text(
                 text = level?.let { "${it.percent}%" } ?: stringResource(R.string.unknown_level),

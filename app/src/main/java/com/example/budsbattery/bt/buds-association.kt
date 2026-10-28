@@ -13,12 +13,14 @@ import com.example.budsbattery.data.saveSelectedAddress
 private const val TAG = "BudsAssociation"
 
 /**
- * Builds the request that shows the system's list of nearby Bluetooth devices.
+ * Builds the request that links the app to one paired device, so Android wakes the app when it connects.
  *
- * @returns a request that lets the user pick one device
+ * @param address - MAC address of the buds the user picked
+ * @returns a request that matches only that device
  */
-fun buildBudsAssociationRequest(): AssociationRequest = AssociationRequest.Builder()
-    .addDeviceFilter(BluetoothDeviceFilter.Builder().build())
+// === NOTE: === Without an address filter, single-device mode grabs the first random device nearby
+fun buildBudsAssociationRequest(address: String): AssociationRequest = AssociationRequest.Builder()
+    .addDeviceFilter(BluetoothDeviceFilter.Builder().setAddress(address).build())
     .setSingleDevice(true)
     .build()
 

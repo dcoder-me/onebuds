@@ -1,13 +1,11 @@
 package com.example.budsbattery.ui
 
-import android.app.PendingIntent
-import android.content.Intent
+import android.graphics.drawable.Icon
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.example.budsbattery.R
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.readBatteryState
-import com.example.budsbattery.service.startBatteryRead
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,10 +13,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Quick Settings tile. Lit while the buds are connected; dim but tappable with the last values when not.
+ * Quick Settings tile. Its icon shows one bud, two buds, or buds with the case; tapping opens the AirPods-style card.
  *
- * @description Not an "active" tile: Android binds it each time the panel opens, so it always shows
- * the saved values. The sync also calls requestListeningState after each new reading.
+ * @description Android tiles only hold an icon and two text lines, so the animated card lives in
+ * BudsPopupActivity. Not an "active" tile: Android binds it each time the panel opens.
  */
 class BudsTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -28,15 +26,9 @@ class BudsTileService : TileService() {
         scope.launch { renderTile(readBatteryState(applicationContext)) }
     }
 
-    // Connected: ask the sync for fresh values. Not connected: open the app, where the fix is
+    // The card asks the sync for fresh values itself, so the tap only needs to open it
     override fun onClick() {
-        scope.launch {
-            if (readBatteryState(applicationContext).connected) {
-                startBatteryRead(applicationContext, refresh = true)
-            } else {
-                openSetup()
-            }
-        }
+        startActivityAndCollapse(budsPopupIntent(this))
     }
 
     override fun onDestroy() {
@@ -44,15 +36,12 @@ class BudsTileService : TileService() {
         super.onDestroy()
     }
 
-    private fun openSetup() {
-        val setup = Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivityAndCollapse(PendingIntent.getActivity(this, 0, setup, PendingIntent.FLAG_IMMUTABLE))
-    }
-
     private fun renderTile(state: BatteryState) {
         val tile = qsTile ?: return
+        val view = budsViewOf(state, System.currentTimeMillis())
         // INACTIVE, not UNAVAILABLE: an unavailable tile ignores taps
-        tile.state = if (state.connected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+        tile.state = if (view.connected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+        tile.icon = Icon.createWithResource(this, shapeIcon(view.shape))
         tile.label = getString(R.string.tile_label)
         tile.subtitle = formatTileSubtitle(state, System.currentTimeMillis())
         tile.updateTile()

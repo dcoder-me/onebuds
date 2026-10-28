@@ -38,14 +38,20 @@ fun parseFastPairBattery(serviceData: ByteArray): BatteryReading? {
         val end = index + 1 + length
         if (end > serviceData.size) return null
         if (type == TYPE_BATTERY_SHOW_UI || type == TYPE_BATTERY_HIDE_UI) {
-            return batteryFrom(serviceData.copyOfRange(index + 1, end))
+            return decodeBatteryValues(serviceData.copyOfRange(index + 1, end))
         }
         index = end
     }
     return null
 }
 
-private fun batteryFrom(values: ByteArray): BatteryReading? {
+/**
+ * Decodes the Fast Pair battery bytes: left, right, case, each 0bSVVVVVVV.
+ *
+ * @param values - up to three battery bytes, as in the advert and the Message Stream event
+ * @returns the reading, or null when every part is unknown
+ */
+fun decodeBatteryValues(values: ByteArray): BatteryReading? {
     val reading = BatteryReading(
         left = values.getOrNull(LEFT)?.let(::decodeFastPairLevel),
         right = values.getOrNull(RIGHT)?.let(::decodeFastPairLevel),

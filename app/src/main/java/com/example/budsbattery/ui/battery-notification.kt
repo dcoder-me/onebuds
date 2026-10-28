@@ -3,9 +3,7 @@ package com.example.budsbattery.ui
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.example.budsbattery.R
 import com.example.budsbattery.data.BatteryState
@@ -46,19 +44,19 @@ fun createBatteryChannel(context: Context) {
  * @returns the notification to post or hand to startForeground
  */
 fun buildBatteryNotification(context: Context, state: BatteryState): Notification {
-    val reading = state.snapshot?.reading
+    val view = budsViewOf(state, System.currentTimeMillis())
     val builder = NotificationCompat.Builder(context, BATTERY_CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_buds)
-        .setContentTitle(context.getString(R.string.notification_title))
-        .setContentText(notificationTextFor(context, state))
-        .setContentIntent(openSetupIntent(context))
+        .setSmallIcon(shapeIcon(view.shape))
+        .setContentTitle(notificationTitleFor(context, view))
+        .setContentText(notificationTextFor(view))
+        .setContentIntent(budsPopupIntent(context))
         .setOngoing(true)
         .setSilent(true)
         .setOnlyAlertOnce(true)
+        .setShowWhen(false)
         .setCategory(NotificationCompat.CATEGORY_STATUS)
         .setRequestPromotedOngoing(true)
-    reading?.let { formatChipText(it) }?.takeIf { it.isNotEmpty() }?.let(builder::setShortCriticalText)
-    state.snapshot?.let { builder.setWhen(it.savedAtMillis).setShowWhen(true) }
+    formatChipText(view).takeIf { it.isNotEmpty() }?.let(builder::setShortCriticalText)
     return builder.build()
 }
 
@@ -74,20 +72,20 @@ fun updateBatteryNotification(context: Context, state: BatteryState) {
 }
 
 /**
- * Picks the notification text for the current state.
+ * Picks the notification title: the buds, or "Reading battery…" until this connection has values.
  *
  * @param context - app context, used for the fallback text
- * @param state - saved values and connection flag
- * @returns the battery line, or "Reading battery…" when nothing is known
+ * @param view - what the screen shows
+ * @returns text such as "L 80 · R 75"
  */
-fun notificationTextFor(context: Context, state: BatteryState): String {
-    val line = state.snapshot?.let { formatBatteryLine(it.reading) }.orEmpty()
-    return line.ifEmpty { context.getString(R.string.reading_battery) }
-}
+fun notificationTitleFor(context: Context, view: BudsView): String =
+    formatBudsLine(view).ifEmpty { context.getString(R.string.reading_battery) }
 
-private fun openSetupIntent(context: Context): PendingIntent = PendingIntent.getActivity(
-    context,
-    0,
-    Intent(context, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-    PendingIntent.FLAG_IMMUTABLE,
-)
+/**
+ * Picks the second line: the case (with its age when old) and where the values come from.
+ *
+ * @param view - what the screen shows
+ * @returns text such as "Case 60 · seen 5 min ago · Live from the buds"
+ */
+fun notificationTextFor(view: BudsView): String =
+    listOf(formatCaseLine(view), view.sourceNote.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · ")

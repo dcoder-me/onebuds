@@ -2,15 +2,13 @@ package com.example.budsbattery.bt
 
 import android.bluetooth.BluetoothAdapter
 import com.example.budsbattery.data.BatteryReading
+import com.example.budsbattery.data.ReadSource
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.select
 
 /** How long to listen for the Fast Pair broadcast during one read. */
 const val FAST_PAIR_SCAN_MS = 8_000L
-
-/** Which route gave the values. */
-enum class ReadSource { VENDOR_CHANNEL, FAST_PAIR }
 
 /**
  * Outcome of one read across both routes. Route fields are null when that route was cut short by a win.
@@ -42,7 +40,7 @@ suspend fun readBatteryAnyRoute(adapter: BluetoothAdapter, address: String): Rea
             result.reading?.let { ReadReport(it, ReadSource.VENDOR_CHANNEL, vendorOffered, true, null) }
         }
         fastPair.onAwait { result ->
-            result.reading?.let { ReadReport(it, ReadSource.FAST_PAIR, vendorOffered, null, true) }
+            result.reading?.let { ReadReport(it, ReadSource.FAST_PAIR_ADVERT, vendorOffered, null, true) }
         }
     }
     if (firstWin != null) {
@@ -56,7 +54,7 @@ suspend fun readBatteryAnyRoute(adapter: BluetoothAdapter, address: String): Rea
     val fastPairResult = fastPair.await()
     val source = when {
         vendorResult.reading != null -> ReadSource.VENDOR_CHANNEL
-        fastPairResult.reading != null -> ReadSource.FAST_PAIR
+        fastPairResult.reading != null -> ReadSource.FAST_PAIR_ADVERT
         else -> null
     }
     ReadReport(

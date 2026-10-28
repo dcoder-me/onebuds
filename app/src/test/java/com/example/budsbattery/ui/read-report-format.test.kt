@@ -1,7 +1,7 @@
 package com.example.budsbattery.ui
 
 import com.example.budsbattery.bt.ReadReport
-import com.example.budsbattery.bt.ReadSource
+import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.BatteryLevel
 import com.example.budsbattery.data.BatteryReading
 import org.junit.Assert.assertEquals
@@ -15,7 +15,7 @@ class ReadReportFormatTest {
     fun `success has no failure text`() {
         val reading = BatteryReading(BatteryLevel(80, false), null, null)
 
-        assertEquals("", formatReadFailure(ReadReport(reading, ReadSource.FAST_PAIR, null, null, true)))
+        assertEquals("", formatReadFailure(ReadReport(reading, ReadSource.FAST_PAIR_ADVERT, null, null, true)))
     }
 
     @Test

@@ -17,64 +17,65 @@ private val fullReading = BatteryReading(
     case = BatteryLevel(60, charging = false),
 )
 
+private fun live(reading: BatteryReading, caseSeenAt: Long = NOW_MS) = BatteryState(
+    snapshot = BatterySnapshot(reading, savedAtMillis = NOW_MS, caseSeenAtMillis = caseSeenAt),
+    connected = true,
+    connectedAtMillis = NOW_MS - MINUTE_MS,
+)
+
 class BatteryFormatTest {
 
     @Test
-    fun `line shows every known part with the charging mark`() {
-        assertEquals("L 80 · R 75 ⚡ · Case 60", formatBatteryLine(fullReading))
+    fun `live tile shows buds and a live case`() {
+        assertEquals("L 80 · R 75 ⚡ · Case 60", formatTileSubtitle(live(fullReading), NOW_MS))
     }
 
     @Test
-    fun `line leaves out unknown parts`() {
-        val reading = fullReading.copy(right = null)
+    fun `live tile leaves out a case that is only last seen`() {
+        val state = live(fullReading, caseSeenAt = NOW_MS - HOUR_MS)
 
-        assertEquals("L 80 · Case 60", formatBatteryLine(reading))
+        assertEquals("L 80 · R 75 ⚡", formatTileSubtitle(state, NOW_MS))
     }
 
     @Test
-    fun `connected tile shows the line without an age`() {
-        val state = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS), connected = true)
-
-        assertEquals("L 80 · R 75 ⚡ · Case 60", formatTileSubtitle(state, NOW_MS))
+    fun `one bud in the ear shows one bud`() {
+        assertEquals("R 75 ⚡", formatBudsLine(budsViewOf(live(fullReading.copy(left = null), NOW_MS - HOUR_MS), NOW_MS)))
     }
 
     @Test
     fun `disconnected tile shows the last values with their age`() {
         val state = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS - 2 * HOUR_MS), connected = false)
 
-        assertEquals("L 80 · R 75 ⚡ · Case 60 · 2h ago", formatTileSubtitle(state, NOW_MS))
+        assertEquals("L 80 · R 75 ⚡ · 2h ago", formatTileSubtitle(state, NOW_MS))
+    }
+
+    @Test
+    fun `tile says reading while a new connection has no values yet`() {
+        val state = BatteryState(
+            snapshot = BatterySnapshot(fullReading, savedAtMillis = NOW_MS - HOUR_MS),
+            connected = true,
+            connectedAtMillis = NOW_MS - MINUTE_MS,
+        )
+
+        assertEquals("Reading…", formatTileSubtitle(state, NOW_MS))
     }
 
     @Test
     fun `tile says not read yet when nothing was saved`() {
-        val state = BatteryState(snapshot = null, connected = false)
-
-        assertEquals("Not read yet", formatTileSubtitle(state, NOW_MS))
+        assertEquals("Not read yet", formatTileSubtitle(BatteryState(snapshot = null, connected = false), NOW_MS))
     }
 
     @Test
-    fun `tile says not read yet when every part is unknown`() {
-        val empty = BatteryReading(left = null, right = null, case = null)
-        val state = BatteryState(BatterySnapshot(empty, savedAtMillis = NOW_MS), connected = true)
+    fun `case line adds the age when the case is old`() {
+        val view = budsViewOf(live(fullReading, caseSeenAt = NOW_MS - 2 * HOUR_MS), NOW_MS)
 
-        assertEquals("Not read yet", formatTileSubtitle(state, NOW_MS))
+        assertEquals("Case 60 · seen 2h ago", formatCaseLine(view))
     }
 
     @Test
-    fun `chip shows only the buds, short`() {
-        assertEquals("L80 R75", formatChipText(fullReading))
-        assertEquals("R75", formatChipText(fullReading.copy(left = null)))
-        assertEquals("", formatChipText(BatteryReading(null, null, BatteryLevel(60, false))))
-    }
-
-    @Test
-    fun `status line says how fresh the values are`() {
-        val fresh = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS), connected = true)
-        val old = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS - 2 * HOUR_MS), connected = false)
-
-        assertEquals("Connected · updated just now", formatStatusLine(fresh, NOW_MS))
-        assertEquals("Not connected · read 2h ago", formatStatusLine(old, NOW_MS))
-        assertEquals("Not connected · not read yet", formatStatusLine(BatteryState(null, false), NOW_MS))
+    fun `chip shows only live buds, short`() {
+        assertEquals("L80 R75", formatChipText(budsViewOf(live(fullReading), NOW_MS)))
+        assertEquals("R75", formatChipText(budsViewOf(live(fullReading.copy(left = null)), NOW_MS)))
     }
 
     @Test

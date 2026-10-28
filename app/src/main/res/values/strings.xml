@@ -29,11 +29,16 @@
     <string name="step_pin_title">Pin to top</string>
     <string name="step_pin_body">Allow Live Updates so battery stays at the top with a status-bar chip.</string>
     <string name="step_pin_done">Live Updates allowed.</string>
-    <string name="notification_title">Realme Buds · connected</string>
+    <string name="step_popup_title">Pop up on connect</string>
+    <string name="step_popup_body">Allow "Display over other apps" so the battery card slides up when the buds connect.</string>
+    <string name="step_popup_done">Card pops up when the buds connect.</string>
     <string name="action_allow">Allow</string>
     <string name="action_detect">Detect</string>
     <string name="action_link">Link</string>
     <string name="action_add">Add</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_done">Done</string>
     <string name="show_app_icon">Show app icon</string>
     <string name="show_app_icon_body">Off hides it from the home screen. Long-press the tile to come back here.</string>
 

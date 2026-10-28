@@ -53,6 +53,8 @@ fun SetupStepsCard() {
         TileStep()
         HorizontalDivider()
         PinStep()
+        HorizontalDivider()
+        PopupStep()
     }
 }
 
@@ -192,6 +194,24 @@ private fun PinStep() {
         done = allowed,
         actionLabel = stringResource(R.string.action_allow),
         onAction = { openPinSettings(context) },
+    )
+}
+
+@Composable
+private fun PopupStep() {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(canPopUpOnConnect(context)) }
+    LifecycleResumeEffect(Unit) {
+        allowed = canPopUpOnConnect(context)
+        onPauseOrDispose { }
+    }
+    StepRow(
+        number = 5,
+        title = stringResource(R.string.step_popup_title),
+        body = stringResource(if (allowed) R.string.step_popup_done else R.string.step_popup_body),
+        done = allowed,
+        actionLabel = stringResource(R.string.action_allow),
+        onAction = { openPopupSettings(context) },
     )
 }
 

@@ -1,9 +1,7 @@
 package com.example.budsbattery.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,18 +24,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.budsbattery.R
-import com.example.budsbattery.data.BatteryLevel
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.batteryStateFlow
 import kotlinx.coroutines.launch
 
 private val CARD_PADDING = 20.dp
-private val GAUGE_SIZE = 84.dp
-private val GAUGE_STROKE = 8.dp
 private val SPINNER_SIZE = 18.dp
 private val SPINNER_STROKE = 2.dp
-private const val FULL_PERCENT = 100f
-private const val TRACK_ALPHA = 0.15f
 
 /** Live battery values with a button to read them now. */
 @Composable
@@ -45,55 +38,25 @@ fun BatteryCard() {
     val context = LocalContext.current
     val state by remember { batteryStateFlow(context.applicationContext) }
         .collectAsState(initial = BatteryState(snapshot = null, connected = false))
-    val reading = state.snapshot?.reading
+    val view = budsViewOf(state, System.currentTimeMillis())
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Column(
             modifier = Modifier.padding(CARD_PADDING),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                BatteryGauge(stringResource(R.string.part_left), reading?.left)
-                BatteryGauge(stringResource(R.string.part_right), reading?.right)
-                BatteryGauge(stringResource(R.string.part_case), reading?.case)
+            BudsPanel(view)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(view.status, style = MaterialTheme.typography.bodyMedium)
+                view.sourceNote?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Text(
-                text = formatStatusLine(state, System.currentTimeMillis()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
             ReadNowButton()
-        }
-    }
-}
-
-@Composable
-private fun BatteryGauge(label: String, level: BatteryLevel?) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(GAUGE_SIZE)) {
-            CircularProgressIndicator(
-                progress = { (level?.percent ?: 0) / FULL_PERCENT },
-                modifier = Modifier.size(GAUGE_SIZE),
-                strokeWidth = GAUGE_STROKE,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = TRACK_ALPHA),
-            )
-            Text(
-                text = level?.let { "${it.percent}%" } ?: stringResource(R.string.unknown_level),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        if (level?.charging == true) {
-            Text(
-                text = "⚡ ${stringResource(R.string.charging)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
         }
     }
 }
@@ -132,8 +95,7 @@ private fun ReadNowButton() {
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
         )
     }
 }

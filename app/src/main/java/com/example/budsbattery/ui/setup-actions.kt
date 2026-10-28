@@ -26,6 +26,7 @@ import com.example.budsbattery.bt.buildBudsAssociationRequest
 import com.example.budsbattery.bt.findConnectedBuds
 import com.example.budsbattery.bt.readBatteryAnyRoute
 import com.example.budsbattery.bt.saveAssociation
+import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.batteryStateFlow
 import com.example.budsbattery.data.readBatteryState
 import com.example.budsbattery.data.saveSelectedAddress
@@ -169,6 +170,17 @@ fun openPinSettings(context: Context) {
 }
 
 /**
+ * Opens the system page where the user allows "Display over other apps", so the card can pop up on connect.
+ *
+ * @param context - activity context
+ */
+fun openPopupSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.fromParts("package", context.packageName, null)),
+    )
+}
+
+/**
  * Gets fresh values now. Asks the running sync first; if it has nothing new, reads directly over every route.
  *
  * @param context - app context
@@ -188,7 +200,7 @@ suspend fun readNow(context: Context): String? {
     if (refreshRunningSync(context)) return null
     val report = readBatteryAnyRoute(adapter, buds.address)
     val reading = report.reading ?: return formatReadFailure(report)
-    publishReading(context, reading)
+    publishReading(context, reading, report.source ?: ReadSource.FAST_PAIR_ADVERT)
     startBatteryRead(context)
     return null
 }

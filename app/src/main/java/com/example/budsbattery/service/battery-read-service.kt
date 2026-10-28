@@ -20,6 +20,7 @@ import com.example.budsbattery.data.saveSelectedAddress
 import com.example.budsbattery.ui.BATTERY_NOTIFICATION_ID
 import com.example.budsbattery.ui.buildBatteryNotification
 import com.example.budsbattery.ui.createBatteryChannel
+import com.example.budsbattery.ui.showPopupOnConnect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,6 +38,9 @@ private const val DETECT_WAIT_MS = 2_000L
 
 /** Intent action that asks a running sync for fresh values now. */
 const val ACTION_REFRESH = "com.example.budsbattery.action.REFRESH"
+
+/** Intent extra: the buds just connected, so pop the card up once the sync starts. */
+const val EXTRA_ANNOUNCE = "com.example.budsbattery.extra.ANNOUNCE"
 
 /**
  * Keeps battery in sync for as long as the buds stay connected, under an ongoing notification.
@@ -71,7 +75,8 @@ class BatteryReadService : Service() {
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_REFRESH) refreshes.tryEmit(Unit)
-        if (syncing?.isActive != true) syncing = scope.launch { syncWhileConnected() }
+        val announce = intent?.getBooleanExtra(EXTRA_ANNOUNCE, false) == true
+        if (syncing?.isActive != true) syncing = scope.launch { syncWhileConnected(announce) }
         return START_NOT_STICKY
     }
 
@@ -104,7 +109,7 @@ class BatteryReadService : Service() {
         return null
     }
 
-    private suspend fun syncWhileConnected() {
+    private suspend fun syncWhileConnected(announce: Boolean) {
         val adapter = getSystemService(BluetoothManager::class.java)?.adapter
         val buds = adapter?.let { awaitConnectedBuds(it) }
         if (adapter == null || buds == null) {
@@ -116,6 +121,8 @@ class BatteryReadService : Service() {
         saveSelectedAddress(this, buds.address)
         saveConnected(this, true)
         refreshSurfaces(applicationContext)
+        // Pops up right away and fills in as values arrive, like the AirPods card
+        if (announce) showPopupOnConnect(applicationContext)
         try {
             runBatterySync(applicationContext, adapter, buds.address, refreshes)
         } finally {

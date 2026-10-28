@@ -5,9 +5,9 @@ import android.content.Context
 import android.service.quicksettings.TileService
 import androidx.glance.appwidget.updateAll
 import com.example.budsbattery.data.BatteryReading
-import com.example.budsbattery.data.BatterySnapshot
+import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.readBatteryState
-import com.example.budsbattery.data.saveSnapshot
+import com.example.budsbattery.data.saveMergedReading
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
 import com.example.budsbattery.ui.updateBatteryNotification
@@ -17,9 +17,10 @@ import com.example.budsbattery.ui.updateBatteryNotification
  *
  * @param context - app context
  * @param reading - values just read from the buds
+ * @param source - route that gave the values
  */
-suspend fun publishReading(context: Context, reading: BatteryReading) {
-    saveSnapshot(context, BatterySnapshot(reading, savedAtMillis = System.currentTimeMillis()))
+suspend fun publishReading(context: Context, reading: BatteryReading, source: ReadSource) {
+    saveMergedReading(context, reading, source, System.currentTimeMillis())
     refreshSurfaces(context)
 }
 

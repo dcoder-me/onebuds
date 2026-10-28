@@ -20,13 +20,12 @@ private val previous = BatterySnapshot(
 class BatteryMergeTest {
 
     @Test
-    fun `a reading without the case keeps the last case and its old time`() {
+    fun `a reading without the case drops the case, like AirPods`() {
         val incoming = BatteryReading(BatteryLevel(80, false), BatteryLevel(79, false), case = null)
 
         val merged = mergeSnapshot(previous, incoming, ReadSource.MESSAGE_STREAM, NOW_MS)
 
-        assertEquals(case60, merged.reading.case)
-        assertEquals(EARLIER_MS, merged.caseSeenAtMillis)
+        assertNull(merged.reading.case)
         assertEquals(NOW_MS, merged.savedAtMillis)
     }
 

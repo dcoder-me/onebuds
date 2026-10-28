@@ -22,14 +22,13 @@ private fun stateOf(savedAt: Long, caseSeenAt: Long, connected: Boolean, connect
 class BudsViewTest {
 
     @Test
-    fun `values from the last connection are never shown as live buds`() {
+    fun `values from the last connection are never shown, the case included`() {
         val view = budsViewOf(stateOf(savedAt = NOW_MS - HOUR_MS, caseSeenAt = NOW_MS - HOUR_MS, connected = true), NOW_MS)
 
         assertTrue(view.waiting)
         assertNull(view.left)
         assertNull(view.right)
-        assertFalse(view.case!!.live)
-        assertEquals("seen 1h ago", view.case!!.age)
+        assertNull(view.case)
     }
 
     @Test

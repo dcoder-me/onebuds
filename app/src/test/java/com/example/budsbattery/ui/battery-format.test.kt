@@ -61,6 +61,16 @@ class BatteryFormatTest {
     }
 
     @Test
+    fun `status line says how fresh the values are`() {
+        val fresh = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS), connected = true)
+        val old = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS - 2 * HOUR_MS), connected = false)
+
+        assertEquals("Connected · updated just now", formatStatusLine(fresh, NOW_MS))
+        assertEquals("Not connected · read 2h ago", formatStatusLine(old, NOW_MS))
+        assertEquals("Not connected · not read yet", formatStatusLine(BatteryState(null, false), NOW_MS))
+    }
+
+    @Test
     fun `age uses the right unit for each range`() {
         assertEquals("just now", formatAge(NOW_MS - 30_000L, NOW_MS))
         assertEquals("12 min ago", formatAge(NOW_MS - 12 * MINUTE_MS, NOW_MS))

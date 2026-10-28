@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.util.Log
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.connectToBuds
 import com.example.budsbattery.bt.runSessionWithTimeout
@@ -24,6 +25,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val TAG = "BatteryReadService"
+
 // Wait after connect, then back off 1s, 2s, 4s between retries
 private val ATTEMPT_WAITS_MS = listOf(1_500L, 1_000L, 2_000L, 4_000L)
 
@@ -36,13 +39,25 @@ class BatteryReadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createBatteryChannel(this)
+        if (!enterForeground()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (listening?.isActive != true) listening = scope.launch { listenUntilGone() }
+        return START_NOT_STICKY
+    }
+
+    // A permission revoked after the start check makes startForeground throw; stop quietly instead
+    private fun enterForeground(): Boolean = try {
         startForeground(
             BATTERY_NOTIFICATION_ID,
             buildBatteryNotification(this, getString(R.string.reading_battery)),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
         )
-        if (listening?.isActive != true) listening = scope.launch { listenUntilGone() }
-        return START_NOT_STICKY
+        true
+    } catch (error: SecurityException) {
+        Log.w(TAG, "Not allowed to run in the foreground", error)
+        false
     }
 
     override fun onDestroy() {

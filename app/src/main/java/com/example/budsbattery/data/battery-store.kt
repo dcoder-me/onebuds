@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private val Context.batteryDataStore by preferencesDataStore(name = "battery")
 
@@ -28,8 +30,17 @@ private val connectedKey = booleanPreferencesKey("connected")
  * @param context - app context used to open the DataStore file
  * @returns the saved state; snapshot is null until the first reading is saved
  */
-suspend fun readBatteryState(context: Context): BatteryState {
-    val prefs = context.batteryDataStore.data.first()
+suspend fun readBatteryState(context: Context): BatteryState = batteryStateFlow(context).first()
+
+/**
+ * Watches the saved values, so a screen can update as soon as a new reading lands.
+ *
+ * @param context - app context used to open the DataStore file
+ * @returns a flow that emits the state now and after every save
+ */
+fun batteryStateFlow(context: Context): Flow<BatteryState> = context.batteryDataStore.data.map(::toBatteryState)
+
+private fun toBatteryState(prefs: Preferences): BatteryState {
     val snapshot = prefs[savedAtKey]?.let { savedAt ->
         BatterySnapshot(
             reading = BatteryReading(

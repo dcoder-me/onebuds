@@ -4,8 +4,13 @@ import android.companion.AssociationInfo
 import android.companion.AssociationRequest
 import android.companion.BluetoothDeviceFilter
 import android.companion.CompanionDeviceManager
+import android.companion.ObservingDevicePresenceRequest
 import android.content.Context
+import android.os.Build
+import android.util.Log
 import com.example.budsbattery.data.saveSelectedAddress
+
+private const val TAG = "BudsAssociation"
 
 /**
  * Builds the request that shows the system's list of nearby Bluetooth devices.
@@ -28,8 +33,24 @@ fun buildBudsAssociationRequest(): AssociationRequest = AssociationRequest.Build
 suspend fun saveAssociation(context: Context, info: AssociationInfo): String? {
     val address = associationAddress(info) ?: return null
     saveSelectedAddress(context, address)
-    context.getSystemService(CompanionDeviceManager::class.java).startObservingDevicePresence(address)
+    observePresence(context.getSystemService(CompanionDeviceManager::class.java), info, address)
     return address
+}
+
+// The wake-up is a bonus: if Android refuses it, the ACL receiver still starts reads, so never crash here
+private fun observePresence(manager: CompanionDeviceManager, info: AssociationInfo, address: String) {
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            manager.startObservingDevicePresence(
+                ObservingDevicePresenceRequest.Builder().setAssociationId(info.id).build(),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            manager.startObservingDevicePresence(address)
+        }
+    } catch (error: RuntimeException) {
+        Log.w(TAG, "Presence wake-up not available", error)
+    }
 }
 
 /**

@@ -14,7 +14,8 @@
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_buds"
-        android:label="@string/app_name">
+        android:label="@string/app_name"
+        android:theme="@style/Theme.BudsBattery">
 
         <!-- No LAUNCHER filter here: the launcher icon lives on LauncherAlias so it can be hidden -->
         <activity

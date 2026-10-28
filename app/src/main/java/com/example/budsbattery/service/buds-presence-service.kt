@@ -2,6 +2,7 @@ package com.example.budsbattery.service
 
 import android.companion.AssociationInfo
 import android.companion.CompanionDeviceService
+import android.companion.DevicePresenceEvent
 import com.example.budsbattery.bt.associationAddress
 import com.example.budsbattery.data.isSelectedDevice
 import com.example.budsbattery.data.readSelectedAddress
@@ -14,6 +15,14 @@ import kotlinx.coroutines.launch
 // Android wakes this service when the chosen buds connect or disconnect, even if the app is not running
 class BudsPresenceService : CompanionDeviceService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Android 16 sends this instead of the two callbacks below
+    override fun onDevicePresenceEvent(event: DevicePresenceEvent) {
+        when (event.event) {
+            DevicePresenceEvent.EVENT_BT_CONNECTED -> startBatteryRead(this)
+            DevicePresenceEvent.EVENT_BT_DISCONNECTED -> stopBatteryRead(this)
+        }
+    }
 
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onDeviceAppeared(associationInfo: AssociationInfo) {

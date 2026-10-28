@@ -23,8 +23,11 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "BudsChannel"
 
-// === NOTE: === UUID of the T300 control channel in Gadgetbridge. If the buds refuse it, try 00001101-0000-1000-8000-00805f9b34fb
-private val BUDS_CONTROL_UUID: UUID = UUID.fromString("0000079a-d102-11e1-9b23-00025b00a5a5")
+// === NOTE: === T300 control channel from Gadgetbridge first, then plain serial (SPP) for models that only expose that
+private val BUDS_CHANNEL_UUIDS: List<UUID> = listOf(
+    UUID.fromString("0000079a-d102-11e1-9b23-00025b00a5a5"),
+    UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"),
+)
 
 private const val REPLY_TIMEOUT_MS = 3_000L
 private const val READ_CHUNK_BYTES = 256
@@ -39,13 +42,22 @@ private const val REQUEST_SEQ = 1
  * @param address - MAC address of the buds
  * @returns a connected socket, or null if the buds refused or permission is missing
  */
-suspend fun connectToBuds(adapter: BluetoothAdapter, address: String): BluetoothSocket? = try {
-    openBudsSocket(adapter, address)
+suspend fun connectToBuds(adapter: BluetoothAdapter, address: String): BluetoothSocket? =
+    // Connecting blocks for seconds; off the main thread or the screen freezes
+    withContext(Dispatchers.IO) {
+        BUDS_CHANNEL_UUIDS.firstNotNullOfOrNull { uuid -> tryOpenBudsSocket(adapter, address, uuid) }
+    }
+
+private fun tryOpenBudsSocket(adapter: BluetoothAdapter, address: String, uuid: UUID): BluetoothSocket? = try {
+    openBudsSocket(adapter, address, uuid).also { Log.d(TAG, "Connected on $uuid") }
 } catch (error: IOException) {
-    Log.w(TAG, "Buds refused the connection", error)
+    Log.w(TAG, "Buds refused $uuid", error)
     null
 } catch (error: SecurityException) {
     Log.w(TAG, "Bluetooth permission missing", error)
+    null
+} catch (error: IllegalArgumentException) {
+    Log.w(TAG, "Bad address $address", error)
     null
 }
 
@@ -122,8 +134,8 @@ suspend fun readBatteryOnce(adapter: BluetoothAdapter, address: String): Battery
     return reading.get()
 }
 
-private fun openBudsSocket(adapter: BluetoothAdapter, address: String): BluetoothSocket {
-    val socket = adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(BUDS_CONTROL_UUID)
+private fun openBudsSocket(adapter: BluetoothAdapter, address: String, uuid: UUID): BluetoothSocket {
+    val socket = adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(uuid)
     try {
         socket.connect()
         return socket

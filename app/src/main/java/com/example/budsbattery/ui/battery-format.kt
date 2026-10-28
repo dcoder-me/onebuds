@@ -7,6 +7,8 @@ import com.example.budsbattery.data.BatteryState
 private const val SEPARATOR = " · "
 private const val CHARGING_MARK = " ⚡"
 private const val NOT_READ_YET = "Not read yet"
+private const val CONNECTED = "Connected"
+private const val NOT_CONNECTED = "Not connected"
 private const val MINUTE_MS = 60_000L
 private const val HOUR_MS = 60 * MINUTE_MS
 private const val DAY_MS = 24 * HOUR_MS
@@ -36,6 +38,20 @@ fun formatTileSubtitle(state: BatteryState, nowMillis: Long): String {
     if (line.isEmpty()) return NOT_READ_YET
     if (state.connected) return line
     return "$line$SEPARATOR${formatAge(snapshot.savedAtMillis, nowMillis)}"
+}
+
+/**
+ * Builds the status line under the battery card in setup.
+ *
+ * @param state - saved values and connection flag
+ * @param nowMillis - current time in epoch milliseconds
+ * @returns text such as "Connected · updated just now" or "Not connected · read 2h ago"
+ */
+fun formatStatusLine(state: BatteryState, nowMillis: Long): String {
+    val connection = if (state.connected) CONNECTED else NOT_CONNECTED
+    val snapshot = state.snapshot ?: return "$connection$SEPARATOR${NOT_READ_YET.lowercase()}"
+    val verb = if (state.connected) "updated" else "read"
+    return "$connection$SEPARATOR$verb ${formatAge(snapshot.savedAtMillis, nowMillis)}"
 }
 
 /**

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Buds Battery</string>
+    <string name="app_subtitle">Realme Buds T310</string>
     <string name="tile_label">Realme Buds</string>
     <string name="channel_name">Battery</string>
     <string name="widget_description">Realme Buds battery</string>
@@ -8,16 +9,34 @@
     <string name="reading_battery">Reading battery…</string>
     <string name="no_reading">No values yet</string>
 
-    <string name="no_buds_selected">No buds selected yet</string>
-    <string name="buds_selected">Buds selected</string>
-    <string name="select_buds">Select buds</string>
-    <string name="allow_permissions">Allow permissions</string>
-    <string name="add_tile">Add tile</string>
+    <string name="part_left">Left</string>
+    <string name="part_right">Right</string>
+    <string name="part_case">Case</string>
+    <string name="charging">Charging</string>
+    <string name="unknown_level">—</string>
     <string name="read_now">Read now</string>
-    <string name="show_app_icon">Show app icon</string>
+    <string name="reading">Reading…</string>
 
-    <string name="select_buds_first">Select your buds first.</string>
-    <string name="read_failed">Couldn\'t read buds. Try again.</string>
+    <string name="setup_title">Setup</string>
+    <string name="step_permissions_title">Allow permissions</string>
+    <string name="step_permissions_body">Bluetooth to talk to the buds, notifications to show battery.</string>
+    <string name="step_buds_title">Choose your buds</string>
+    <string name="step_buds_body">Pick your Realme Buds from the list.</string>
+    <string name="step_buds_done">Selected: %1$s</string>
+    <string name="step_tile_title">Add Quick Settings tile</string>
+    <string name="step_tile_body">See battery from the pull-down panel.</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_choose">Choose</string>
+    <string name="action_change">Change</string>
+    <string name="action_add">Add</string>
+    <string name="show_app_icon">Show app icon</string>
+    <string name="show_app_icon_body">Off hides it from the home screen. Long-press the tile to come back here.</string>
+
+    <string name="select_buds_first">Choose your buds first</string>
+    <string name="allow_permissions_first">Allow permissions first</string>
+    <string name="allow_in_settings">Allow Bluetooth in Settings</string>
+    <string name="read_failed">Couldn\'t read buds. Wear them and try again.</string>
     <string name="add_tile_failed">Couldn\'t add tile. Try again.</string>
+    <string name="tile_added">Tile added</string>
     <string name="association_failed">Couldn\'t save buds. Try again.</string>
 </resources>

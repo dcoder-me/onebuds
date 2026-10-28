@@ -7,8 +7,11 @@ import com.example.budsbattery.data.ReadSource
 
 private const val SEPARATOR = " · "
 
-// One bud or the case as shown. Live means read during this connection, in the latest reading.
-data class PartView(val level: BatteryLevel, val live: Boolean, val age: String?)
+/** At or below this a part shows in red. */
+const val LOW_PERCENT = 20
+
+// One bud or the case as shown. Live means read during this connection.
+data class PartView(val level: BatteryLevel, val live: Boolean)
 
 // Which picture the tile shows.
 enum class BudsShape { ONE_BUD, TWO_BUDS, WITH_CASE }
@@ -33,10 +36,21 @@ data class BudsView(
             (left == null) != (right == null) -> BudsShape.ONE_BUD
             else -> BudsShape.TWO_BUDS
         }
+
+    // The bud that runs out first, so the chip and the ring show it
+    val lowerBud: PartView?
+        get() = listOfNotNull(left, right).minByOrNull { it.level.percent }
+
+    val low: Boolean
+        get() = lowerBud?.let { it.level.percent <= LOW_PERCENT } == true
+
+    val budsCharging: Boolean
+        get() = left?.level?.charging == true || right?.level?.charging == true
 }
 
 /**
- * Turns the saved state into what the screen shows. Values from an earlier connection are never shown as live.
+ * Turns the saved state into what the screen shows. Values from an earlier connection are never shown as live,
+ * and the case shows only when the latest reading has it.
  *
  * @param state - saved values, connection flag and connection start
  * @param nowMillis - current time in epoch milliseconds
@@ -47,8 +61,9 @@ fun budsViewOf(state: BatteryState, nowMillis: Long): BudsView {
     val fresh = snapshot != null && snapshot.savedAtMillis >= (state.connectedAtMillis ?: Long.MIN_VALUE)
     return when {
         snapshot == null -> emptyView(state.connected)
-        state.connected && !fresh -> waitingView(snapshot, nowMillis)
-        state.connected -> liveView(snapshot, nowMillis)
+        // Buds and case change fast, so last connection's values are hidden until this one answers
+        state.connected && !fresh -> emptyView(connected = true)
+        state.connected -> liveView(snapshot)
         else -> pastView(snapshot, nowMillis)
     }
 }
@@ -59,42 +74,29 @@ private fun emptyView(connected: Boolean) = BudsView(
     case = null,
     connected = connected,
     waiting = connected,
-    status = if (connected) "Connected${SEPARATOR}reading…" else "Not connected${SEPARATOR}not read yet",
+    status = if (connected) "Connecting…" else "Not connected${SEPARATOR}not read yet",
     sourceNote = null,
 )
 
-// Buds change fast, so last connection's values are hidden; the case can only be shown as last seen
-private fun waitingView(snapshot: BatterySnapshot, nowMillis: Long) = emptyView(connected = true).copy(
-    case = caseView(snapshot, nowMillis, liveAllowed = false),
-)
-
-private fun liveView(snapshot: BatterySnapshot, nowMillis: Long) = BudsView(
-    left = snapshot.reading.left?.let { PartView(it, live = true, age = null) },
-    right = snapshot.reading.right?.let { PartView(it, live = true, age = null) },
-    case = caseView(snapshot, nowMillis, liveAllowed = true),
+private fun liveView(snapshot: BatterySnapshot) = partsOf(snapshot, live = true).copy(
     connected = true,
-    waiting = false,
-    status = "Connected${SEPARATOR}updated ${formatAge(snapshot.savedAtMillis, nowMillis)}",
+    status = "Connected",
     sourceNote = sourceNoteOf(snapshot.source),
 )
 
-private fun pastView(snapshot: BatterySnapshot, nowMillis: Long) = BudsView(
-    left = snapshot.reading.left?.let { PartView(it, live = false, age = null) },
-    right = snapshot.reading.right?.let { PartView(it, live = false, age = null) },
-    case = caseView(snapshot, nowMillis, liveAllowed = false),
-    connected = false,
-    waiting = false,
+private fun pastView(snapshot: BatterySnapshot, nowMillis: Long) = partsOf(snapshot, live = false).copy(
     status = "Not connected${SEPARATOR}read ${formatAge(snapshot.savedAtMillis, nowMillis)}",
-    sourceNote = null,
 )
 
-// The case is live only when the latest reading carried it
-private fun caseView(snapshot: BatterySnapshot, nowMillis: Long, liveAllowed: Boolean): PartView? {
-    val level = snapshot.reading.case ?: return null
-    val seenAt = snapshot.caseSeenAtMillis ?: snapshot.savedAtMillis
-    val live = liveAllowed && seenAt == snapshot.savedAtMillis
-    return PartView(level, live, age = if (live) null else "seen ${formatAge(seenAt, nowMillis)}")
-}
+private fun partsOf(snapshot: BatterySnapshot, live: Boolean) = BudsView(
+    left = snapshot.reading.left?.let { PartView(it, live) },
+    right = snapshot.reading.right?.let { PartView(it, live) },
+    case = snapshot.reading.case?.let { PartView(it, live) },
+    connected = false,
+    waiting = false,
+    status = "",
+    sourceNote = null,
+)
 
 private fun sourceNoteOf(source: ReadSource?): String? = when (source) {
     ReadSource.MESSAGE_STREAM -> "Live from the buds"

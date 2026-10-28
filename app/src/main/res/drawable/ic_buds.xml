@@ -1,18 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Two earbuds joined by a headband. Monochrome so the system can tint it. -->
+<!-- Two buds facing outward, as they sit in the ears. Monochrome so the system can tint it. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M7,10.5a3.5,3.5 0 1,0 0,7a3.5,3.5 0 1,0 0,-7z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M17,10.5a3.5,3.5 0 1,0 0,7a3.5,3.5 0 1,0 0,-7z" />
-    <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.8"
-        android:pathData="M7,10.5 C7,4 17,4 17,10.5" />
+    <group
+        android:translateX="13.4"
+        android:translateY="3.6"
+        android:scaleX="-0.7"
+        android:scaleY="0.7">
+        <clip-path android:pathData="M0,0H13.7V24H0z M14.75,0H24V24H14.75z M0,12H24V24H0z M0,0H24V2.5H0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M9.4,2.2a5.4,5.4 0 1,0 0,10.8a5.4,5.4 0 1,0 0,-10.8z M9.4,5.95a1.45,1.45 0 1,0 0,2.9a1.45,1.45 0 1,0 0,-2.9z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M7.2,11.2a2.2,2.2 0 0,1 4.4,0V19.8a2.2,2.2 0 0,1 -4.4,0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M16.3,4.2a2.5,3.1 0 1,0 0,6.2a2.5,3.1 0 1,0 0,-6.2z" />
+    </group>
+    <group
+        android:translateX="10.6"
+        android:translateY="3.6"
+        android:scaleX="0.7"
+        android:scaleY="0.7">
+        <clip-path android:pathData="M0,0H13.7V24H0z M14.75,0H24V24H14.75z M0,12H24V24H0z M0,0H24V2.5H0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M9.4,2.2a5.4,5.4 0 1,0 0,10.8a5.4,5.4 0 1,0 0,-10.8z M9.4,5.95a1.45,1.45 0 1,0 0,2.9a1.45,1.45 0 1,0 0,-2.9z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M7.2,11.2a2.2,2.2 0 0,1 4.4,0V19.8a2.2,2.2 0 0,1 -4.4,0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M16.3,4.2a2.5,3.1 0 1,0 0,6.2a2.5,3.1 0 1,0 0,-6.2z" />
+    </group>
 </vector>

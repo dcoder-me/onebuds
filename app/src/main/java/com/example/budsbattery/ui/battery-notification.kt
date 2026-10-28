@@ -37,7 +37,8 @@ fun createBatteryChannel(context: Context) {
 /**
  * Builds the ongoing battery notification the sync service runs under.
  *
- * @description Asks Android 16 to promote it to a Live Update (top of the shade, status-bar chip).
+ * @description Asks Android 16 to promote it to a Live Update (top of the shade, status-bar pill).
+ * Only promotable parts are used: text, small icon, a drawn large icon and an accent colour, no custom layout.
  * Android or the phone maker may decline; it then stays a normal pinned notification.
  * @param context - app context
  * @param state - saved values and connection flag
@@ -45,10 +46,15 @@ fun createBatteryChannel(context: Context) {
  */
 fun buildBatteryNotification(context: Context, state: BatteryState): Notification {
     val view = budsViewOf(state, System.currentTimeMillis())
+    val modelName = context.getString(R.string.app_subtitle)
+    val live = liveUpdateTextOf(view, modelName)
     val builder = NotificationCompat.Builder(context, BATTERY_CHANNEL_ID)
         .setSmallIcon(shapeIcon(view.shape))
-        .setContentTitle(notificationTitleFor(context, view))
-        .setContentText(notificationTextFor(view))
+        .setContentTitle(live.title)
+        .setContentText(live.text)
+        .setSubText(modelName)
+        .setLargeIcon(liveUpdateIcon(context, view))
+        .setColor(liveAccentColor(context, view.low))
         .setContentIntent(budsPopupIntent(context))
         .setOngoing(true)
         .setSilent(true)
@@ -56,7 +62,7 @@ fun buildBatteryNotification(context: Context, state: BatteryState): Notificatio
         .setShowWhen(false)
         .setCategory(NotificationCompat.CATEGORY_STATUS)
         .setRequestPromotedOngoing(true)
-    formatChipText(view).takeIf { it.isNotEmpty() }?.let(builder::setShortCriticalText)
+    live.chip?.let(builder::setShortCriticalText)
     return builder.build()
 }
 
@@ -70,22 +76,3 @@ fun updateBatteryNotification(context: Context, state: BatteryState) {
     context.getSystemService(NotificationManager::class.java)
         .notify(BATTERY_NOTIFICATION_ID, buildBatteryNotification(context, state))
 }
-
-/**
- * Picks the notification title: the buds, or "Reading battery…" until this connection has values.
- *
- * @param context - app context, used for the fallback text
- * @param view - what the screen shows
- * @returns text such as "L 80 · R 75"
- */
-fun notificationTitleFor(context: Context, view: BudsView): String =
-    formatBudsLine(view).ifEmpty { context.getString(R.string.reading_battery) }
-
-/**
- * Picks the second line: the case (with its age when old) and where the values come from.
- *
- * @param view - what the screen shows
- * @returns text such as "Case 60 · seen 5 min ago · Live from the buds"
- */
-fun notificationTextFor(view: BudsView): String =
-    listOf(formatCaseLine(view), view.sourceNote.orEmpty()).filter { it.isNotEmpty() }.joinToString(" · ")

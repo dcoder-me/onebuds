@@ -7,7 +7,7 @@ import androidx.glance.appwidget.updateAll
 import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.readBatteryState
-import com.example.budsbattery.data.saveMergedReading
+import com.example.budsbattery.data.saveReading
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
 import com.example.budsbattery.ui.updateBatteryNotification
@@ -20,7 +20,7 @@ import com.example.budsbattery.ui.updateBatteryNotification
  * @param source - route that gave the values
  */
 suspend fun publishReading(context: Context, reading: BatteryReading, source: ReadSource) {
-    saveMergedReading(context, reading, source, System.currentTimeMillis())
+    saveReading(context, reading, source, System.currentTimeMillis())
     refreshSurfaces(context)
 }
 

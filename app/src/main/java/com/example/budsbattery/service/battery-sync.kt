@@ -62,7 +62,10 @@ private fun rankedPublisher(context: Context): Publish {
     val lock = Mutex()
     return { reading, source ->
         lock.withLock {
-            if (shouldAccept(best.get(), source)) {
+            val accepted = shouldAccept(best.get(), source)
+            // One line per reading, so a wrong value (such as a low case) can be traced to the route that sent it
+            Log.d(TAG, "$source L=${reading.left} R=${reading.right} case=${reading.case} ${if (accepted) "shown" else "ignored"}")
+            if (accepted) {
                 if (best.get() != source) Log.d(TAG, "Live values now come from $source")
                 best.set(source)
                 publishReading(context, reading, source)

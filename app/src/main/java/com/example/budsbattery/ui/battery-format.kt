@@ -23,27 +23,14 @@ fun formatBudsLine(view: BudsView): String = listOfNotNull(
 ).joinToString(SEPARATOR)
 
 /**
- * Builds the case line, with its age when it is not from the latest reading.
+ * Builds the tiny status-bar chip text of the Live Update: the bud that runs out first.
  *
+ * @description The chip is at most 96dp and shows full text only under 7 characters, so one number fits.
  * @param view - what the screen shows
- * @returns text such as "Case 60" or "Case 60 · seen 2h ago"; empty when the case was never read
+ * @returns text such as "75%", or an empty string when no bud is live
  */
-fun formatCaseLine(view: BudsView): String {
-    val case = view.case ?: return ""
-    val line = formatPart("Case", case.level)
-    return case.age?.let { "$line$SEPARATOR$it" } ?: line
-}
-
-/**
- * Builds the tiny status-bar chip text of the Live Update. The chip is at most 96dp wide, so buds only.
- *
- * @param view - what the screen shows
- * @returns text such as "L80 R75", or an empty string when no bud is live
- */
-fun formatChipText(view: BudsView): String = listOfNotNull(
-    view.left?.takeIf { it.live }?.let { "L${it.level.percent}" },
-    view.right?.takeIf { it.live }?.let { "R${it.level.percent}" },
-).joinToString(" ")
+fun formatChipText(view: BudsView): String =
+    view.lowerBud?.takeIf { it.live }?.let { "${it.level.percent}%" }.orEmpty()
 
 /**
  * Builds the tile subtitle from the shared view.

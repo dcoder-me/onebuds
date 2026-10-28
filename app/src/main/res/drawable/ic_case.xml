@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Charging case with its status light cut out. Monochrome so the system can tint it. -->
+<!-- Pebble charging case with its lid line and status light. Monochrome so the system can tint it. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M6,6h12a4,4 0 0,1 4,4v6a4,4 0 0,1 -4,4h-12a4,4 0 0,1 -4,-4v-6a4,4 0 0,1 4,-4z M12,15a1.2,1.2 0 1,0 0,2.4a1.2,1.2 0 1,0 0,-2.4z" />
-    <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1"
-        android:pathData="M2,11.5H22" />
+    <group>
+        <clip-path android:pathData="M0,0H24V10.7H0z M0,11.85H24V24H0z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M8.6,5.5H15.4A6.6,6.6 0 0,1 22,12.1V12.4A6.6,6.6 0 0,1 15.4,19H8.6A6.6,6.6 0 0,1 2,12.4V12.1A6.6,6.6 0 0,1 8.6,5.5z M12,14.25a1.05,1.05 0 1,0 0,2.1a1.05,1.05 0 1,0 0,-2.1z" />
+    </group>
 </vector>

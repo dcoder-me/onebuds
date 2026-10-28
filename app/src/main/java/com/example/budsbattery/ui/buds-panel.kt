@@ -43,7 +43,6 @@ private val PART_ICON_SIZE = 38.dp
 private const val FULL_PERCENT = 100f
 private const val TRACK_ALPHA = 0.14f
 private const val OLD_ALPHA = 0.55f
-private const val LOW_PERCENT = 20
 private const val FILL_MS = 900
 private const val PULSE_MS = 700
 private const val PULSE_MIN_ALPHA = 0.3f
@@ -51,7 +50,7 @@ private const val MIRRORED = -1f
 
 /**
  * Left bud, right bud and case side by side, each with a ring that fills up. A bud out of reach
- * slides away, so one bud in the ear shows one bud; the case appears when its level is known.
+ * slides away, so one bud in the ear shows one bud; the case shows only while a bud sits in it.
  *
  * @param view - what the screen shows
  * @param modifier - layout modifier
@@ -121,7 +120,6 @@ private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boo
             )
         }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        part?.age?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -134,5 +132,5 @@ private fun ChargingBolt() {
         animationSpec = infiniteRepeatable(tween(PULSE_MS), RepeatMode.Reverse),
         label = "bolt",
     )
-    Text("⚡", modifier = Modifier.alpha(alpha))
+    Text("⚡", color = MaterialTheme.colorScheme.primary, modifier = Modifier.alpha(alpha))
 }

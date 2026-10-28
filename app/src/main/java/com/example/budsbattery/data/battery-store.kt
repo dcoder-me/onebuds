@@ -23,7 +23,6 @@ private val leftKeys = PartKeys(intPreferencesKey("left_percent"), booleanPrefer
 private val rightKeys = PartKeys(intPreferencesKey("right_percent"), booleanPreferencesKey("right_charging"))
 private val caseKeys = PartKeys(intPreferencesKey("case_percent"), booleanPreferencesKey("case_charging"))
 private val savedAtKey = longPreferencesKey("saved_at")
-private val caseSeenAtKey = longPreferencesKey("case_seen_at")
 private val sourceKey = stringPreferencesKey("source")
 private val connectedKey = booleanPreferencesKey("connected")
 private val connectedAtKey = longPreferencesKey("connected_at")
@@ -58,27 +57,25 @@ private fun snapshotOf(prefs: Preferences): BatterySnapshot? = prefs[savedAtKey]
             case = readPart(prefs, caseKeys),
         ),
         savedAtMillis = savedAt,
-        caseSeenAtMillis = prefs[caseSeenAtKey],
         source = prefs[sourceKey]?.let { name -> ReadSource.entries.firstOrNull { it.name == name } },
     )
 }
 
 /**
- * Folds a new reading into the saved one in a single write, so two routes can't interleave.
+ * Saves a reading exactly as sent, in a single write so two routes can't interleave.
  *
+ * @description Nothing is kept from before: a part missing from the reading is shown as missing.
  * @param context - app context used to open the DataStore file
  * @param reading - values just read
  * @param source - route that gave the values
  * @param nowMillis - current time in epoch milliseconds
  */
-suspend fun saveMergedReading(context: Context, reading: BatteryReading, source: ReadSource, nowMillis: Long) {
+suspend fun saveReading(context: Context, reading: BatteryReading, source: ReadSource, nowMillis: Long) {
     context.batteryDataStore.edit { prefs ->
-        val snapshot = mergeSnapshot(snapshotOf(prefs), reading, source, nowMillis)
-        writePart(prefs, leftKeys, snapshot.reading.left)
-        writePart(prefs, rightKeys, snapshot.reading.right)
-        writePart(prefs, caseKeys, snapshot.reading.case)
-        prefs[savedAtKey] = snapshot.savedAtMillis
-        snapshot.caseSeenAtMillis?.let { prefs[caseSeenAtKey] = it }
+        writePart(prefs, leftKeys, reading.left)
+        writePart(prefs, rightKeys, reading.right)
+        writePart(prefs, caseKeys, reading.case)
+        prefs[savedAtKey] = nowMillis
         prefs[sourceKey] = source.name
     }
 }

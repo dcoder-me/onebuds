@@ -17,8 +17,8 @@ private val fullReading = BatteryReading(
     case = BatteryLevel(60, charging = false),
 )
 
-private fun live(reading: BatteryReading, caseSeenAt: Long = NOW_MS) = BatteryState(
-    snapshot = BatterySnapshot(reading, savedAtMillis = NOW_MS, caseSeenAtMillis = caseSeenAt),
+private fun live(reading: BatteryReading) = BatteryState(
+    snapshot = BatterySnapshot(reading, savedAtMillis = NOW_MS),
     connected = true,
     connectedAtMillis = NOW_MS - MINUTE_MS,
 )
@@ -31,15 +31,15 @@ class BatteryFormatTest {
     }
 
     @Test
-    fun `live tile leaves out a case that is only last seen`() {
-        val state = live(fullReading, caseSeenAt = NOW_MS - HOUR_MS)
+    fun `live tile leaves out the case when the reading has none`() {
+        val state = live(fullReading.copy(case = null))
 
         assertEquals("L 80 · R 75 ⚡", formatTileSubtitle(state, NOW_MS))
     }
 
     @Test
     fun `one bud in the ear shows one bud`() {
-        assertEquals("R 75 ⚡", formatBudsLine(budsViewOf(live(fullReading.copy(left = null), NOW_MS - HOUR_MS), NOW_MS)))
+        assertEquals("R 75 ⚡", formatBudsLine(budsViewOf(live(fullReading.copy(left = null)), NOW_MS)))
     }
 
     @Test
@@ -66,16 +66,17 @@ class BatteryFormatTest {
     }
 
     @Test
-    fun `case line adds the age when the case is old`() {
-        val view = budsViewOf(live(fullReading, caseSeenAt = NOW_MS - 2 * HOUR_MS), NOW_MS)
-
-        assertEquals("Case 60 · seen 2h ago", formatCaseLine(view))
+    fun `chip shows the bud that runs out first`() {
+        assertEquals("75%", formatChipText(budsViewOf(live(fullReading), NOW_MS)))
+        assertEquals("80%", formatChipText(budsViewOf(live(fullReading.copy(right = null)), NOW_MS)))
     }
 
     @Test
-    fun `chip shows only live buds, short`() {
-        assertEquals("L80 R75", formatChipText(budsViewOf(live(fullReading), NOW_MS)))
-        assertEquals("R75", formatChipText(budsViewOf(live(fullReading.copy(left = null)), NOW_MS)))
+    fun `chip is empty while waiting or disconnected`() {
+        val past = BatteryState(BatterySnapshot(fullReading, savedAtMillis = NOW_MS - HOUR_MS), connected = false)
+
+        assertEquals("", formatChipText(budsViewOf(past, NOW_MS)))
+        assertEquals("", formatChipText(budsViewOf(BatteryState(snapshot = null, connected = true), NOW_MS)))
     }
 
     @Test

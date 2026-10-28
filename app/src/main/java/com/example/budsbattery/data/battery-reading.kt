@@ -17,11 +17,10 @@ enum class ReadSource(val rank: Int) {
     MESSAGE_STREAM(2),
 }
 
-// The case level is only known while a bud sits in it, so it keeps its own "seen at" time.
+// The latest reading as sent. The case is in it only while a bud sits in the case, like AirPods.
 data class BatterySnapshot(
     val reading: BatteryReading,
     val savedAtMillis: Long,
-    val caseSeenAtMillis: Long? = null,
     val source: ReadSource? = null,
 )
 

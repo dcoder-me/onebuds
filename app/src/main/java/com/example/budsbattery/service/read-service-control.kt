@@ -38,12 +38,3 @@ fun startBatteryRead(context: Context, refresh: Boolean = false) {
         Log.w(TAG, "Android blocked the background start", error)
     }
 }
-
-/**
- * Stops the battery read service. Its own cleanup marks the buds as disconnected.
- *
- * @param context - app context
- */
-fun stopBatteryRead(context: Context) {
-    context.stopService(Intent(context, BatteryReadService::class.java))
-}

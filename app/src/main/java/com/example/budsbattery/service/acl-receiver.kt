@@ -10,7 +10,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-// Safety net: starts the read service if the companion wake-up was missed
+// Safety net: starts the read service if the companion wake-up was missed. Ending is the service's own job:
+// it checks the audio profiles first, since a single link drop can happen while the buds stay connected
 class AclReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
@@ -27,9 +28,6 @@ class AclReceiver : BroadcastReceiver() {
     private suspend fun handleAcl(context: Context, action: String?, address: String?) {
         val selected = readSelectedAddress(context)
         if (!isSelectedDevice(selected, address)) return
-        when (action) {
-            BluetoothDevice.ACTION_ACL_CONNECTED -> startBatteryRead(context)
-            BluetoothDevice.ACTION_ACL_DISCONNECTED -> stopBatteryRead(context)
-        }
+        if (action == BluetoothDevice.ACTION_ACL_CONNECTED) startBatteryRead(context)
     }
 }

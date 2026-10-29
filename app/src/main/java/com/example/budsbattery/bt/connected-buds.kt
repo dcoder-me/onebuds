@@ -34,14 +34,28 @@ private val BLUETOOTH_OUTPUT_TYPES = setOf(
  * @returns the connected buds, likely buds first by name, or null when no audio device is connected
  */
 suspend fun findConnectedBuds(context: Context, adapter: BluetoothAdapter): PairedDevice? {
-    // Asked side by side: one at a time, each silent profile cost its full timeout before the next began
-    val fromProfiles = coroutineScope {
-        AUDIO_PROFILES.map { profile -> async { connectedOnProfile(context, adapter, profile) } }.awaitAll().flatten()
-    }
     // Second official source: some phones keep the profile list empty while audio still routes to the buds
-    val devices = (fromProfiles + bluetoothAudioOutputs(context)).distinctBy { it.address.uppercase() }
+    val devices = (onAudioProfiles(context, adapter) + bluetoothAudioOutputs(context)).distinctBy { it.address.uppercase() }
     Log.d(TAG, "Connected audio devices: $devices")
-    return devices.firstOrNull { looksLikeBuds(it.name) } ?: devices.firstOrNull()
+    return pickBuds(devices)
+}
+
+/**
+ * Finds the buds by their audio profile state alone, the source Android itself updates before the link drops.
+ *
+ * @description Used to confirm a link drop. The audio output list can lag a real disconnect, so it is left out.
+ * @param context - any context
+ * @param adapter - Bluetooth adapter of the phone
+ * @returns the buds still connected on an audio profile, or null when none is
+ */
+suspend fun findProfileConnectedBuds(context: Context, adapter: BluetoothAdapter): PairedDevice? =
+    pickBuds(onAudioProfiles(context, adapter).distinctBy { it.address.uppercase() })
+
+private fun pickBuds(devices: List<PairedDevice>): PairedDevice? = devices.firstOrNull { looksLikeBuds(it.name) } ?: devices.firstOrNull()
+
+// Asked side by side: one at a time, each silent profile cost its full timeout before the next began
+private suspend fun onAudioProfiles(context: Context, adapter: BluetoothAdapter): List<PairedDevice> = coroutineScope {
+    AUDIO_PROFILES.map { profile -> async { connectedOnProfile(context, adapter, profile) } }.awaitAll().flatten()
 }
 
 private fun bluetoothAudioOutputs(context: Context): List<PairedDevice> =

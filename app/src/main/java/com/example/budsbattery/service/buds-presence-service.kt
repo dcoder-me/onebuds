@@ -12,16 +12,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-// Android wakes this service when the chosen buds connect or disconnect, even if the app is not running
+// Android wakes this service when the chosen buds connect, even if the app is not running. A disconnect is left
+// to the sync service, which checks the audio profiles first, since one link drop can happen mid-use
 class BudsPresenceService : CompanionDeviceService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Android 16 sends this instead of the two callbacks below
     override fun onDevicePresenceEvent(event: DevicePresenceEvent) {
-        when (event.event) {
-            DevicePresenceEvent.EVENT_BT_CONNECTED -> startBatteryRead(this)
-            DevicePresenceEvent.EVENT_BT_DISCONNECTED -> stopBatteryRead(this)
-        }
+        if (event.event == DevicePresenceEvent.EVENT_BT_CONNECTED) startBatteryRead(this)
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
@@ -43,7 +41,7 @@ class BudsPresenceService : CompanionDeviceService() {
         scope.launch {
             val selected = readSelectedAddress(this@BudsPresenceService)
             if (!isSelectedDevice(selected, associationAddress(info))) return@launch
-            if (connected) startBatteryRead(this@BudsPresenceService) else stopBatteryRead(this@BudsPresenceService)
+            if (connected) startBatteryRead(this@BudsPresenceService)
         }
     }
 }

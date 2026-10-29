@@ -10,11 +10,12 @@ data class BatteryReading(
     val case: BatteryLevel?,
 )
 
-// Which route gave the values. A higher rank is closer to the buds and wins while it keeps answering.
+// Which route gave the values. The highest-ranked open route wins. The vendor channel ranks top because it
+// also reports which bud sits in the case, so the levels and the case come from the same source
 enum class ReadSource(val rank: Int) {
     FAST_PAIR_ADVERT(0),
-    VENDOR_CHANNEL(1),
-    MESSAGE_STREAM(2),
+    MESSAGE_STREAM(1),
+    VENDOR_CHANNEL(2),
     ;
 
     // Sent by the buds over a live link, not the lagging broadcast

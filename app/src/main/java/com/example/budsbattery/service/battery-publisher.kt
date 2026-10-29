@@ -15,7 +15,7 @@ import com.example.budsbattery.ui.BudsWidget
 import com.example.budsbattery.ui.updateBatteryNotification
 
 /**
- * Saves a new reading, then refreshes the tile, widget and notification from the saved state.
+ * Saves a new reading. The running sync service redraws every surface from the saved state on its own.
  *
  * @param context - app context
  * @param reading - values just read from the buds
@@ -23,18 +23,16 @@ import com.example.budsbattery.ui.updateBatteryNotification
  */
 suspend fun publishReading(context: Context, reading: BatteryReading, source: ReadSource) {
     saveReading(context, reading, source, System.currentTimeMillis())
-    refreshSurfaces(context)
 }
 
 /**
- * Saves whether a bud sits in the case, then refreshes every surface so the case appears or hides at once.
+ * Saves whether a bud sits in the case. The running sync service redraws every surface from the saved state.
  *
  * @param context - app context
  * @param budInCase - true while at least one bud sits in the case
  */
 suspend fun publishPlacement(context: Context, budInCase: Boolean) {
     saveBudInCase(context, budInCase)
-    refreshSurfaces(context)
 }
 
 /**
@@ -44,7 +42,17 @@ suspend fun publishPlacement(context: Context, budInCase: Boolean) {
  */
 suspend fun refreshSurfaces(context: Context) {
     val state = readBatteryState(context)
+    // The notification goes first: the widget update can take seconds and must never hold it up
+    if (state.connected) updateBatteryNotification(context, state, readLiveUpdate(context))
+    refreshHomeSurfaces(context)
+}
+
+/**
+ * Asks the tile and the widget to redraw from the saved state.
+ *
+ * @param context - app context
+ */
+suspend fun refreshHomeSurfaces(context: Context) {
     TileService.requestListeningState(context, ComponentName(context, BudsTileService::class.java))
     BudsWidget().updateAll(context)
-    if (state.connected) updateBatteryNotification(context, state, readLiveUpdate(context))
 }

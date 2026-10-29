@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.util.Log
 import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.bt.findConnectedBuds
+import com.example.budsbattery.bt.findProfileConnectedBuds
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.batteryStateFlow
 import com.example.budsbattery.data.isSelectedDevice
@@ -22,6 +23,7 @@ import com.example.budsbattery.data.saveSelectedAddress
 import com.example.budsbattery.ui.BATTERY_NOTIFICATION_ID
 import com.example.budsbattery.ui.buildBatteryNotification
 import com.example.budsbattery.ui.createBatteryChannel
+import com.example.budsbattery.ui.updateBatteryNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,12 +32,20 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val TAG = "BatteryReadService"
 private const val DETECT_ATTEMPTS = 6
 private const val DETECT_WAIT_MS = 2_000L
+
+// Android drops notification updates above 5 a second, which could lose the newest one; 4 a second stays under
+private const val NOTIFICATION_GAP_MS = 250L
 
 /** Intent action that asks a running sync for fresh values now. */
 const val ACTION_REFRESH = "com.example.budsbattery.action.REFRESH"
@@ -48,7 +58,10 @@ class BatteryReadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val refreshes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var syncing: Job? = null
-    private var budsAddress: String? = null
+    private var linkCheck: Job? = null
+
+    // A new address restarts the routes on it, for buds whose other earbud takes over the link
+    private val budsAddress = MutableStateFlow<String?>(null)
 
     // Kept current so a repeat start (tile tap, card open) re-posts real values, not "Reading battery…"
     @Volatile
@@ -58,11 +71,13 @@ class BatteryReadService : Service() {
     @Volatile
     private var liveUpdate = true
 
-    // Stops the sync the moment the buds' Bluetooth link drops
+    // A dropped link is checked against the audio profiles before the sync ends
     private val disconnectReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-            if (isSelectedDevice(budsAddress, device?.address)) stopSelf()
+            if (!isSelectedDevice(budsAddress.value, device?.address)) return
+            linkCheck?.cancel()
+            linkCheck = scope.launch { onLinkDropped() }
         }
     }
 
@@ -74,6 +89,35 @@ class BatteryReadService : Service() {
         registerReceiver(disconnectReceiver, IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED), RECEIVER_EXPORTED)
         scope.launch { batteryStateFlow(applicationContext).collect { latestState = it } }
         scope.launch { liveUpdateFlow(applicationContext).collect { liveUpdate = it } }
+        scope.launch { drawNotification() }
+        // Separate from the notification: a widget redraw can take seconds and must not hold it up
+        scope.launch { batteryStateFlow(applicationContext).conflate().collect { refreshHomeSurfaces(applicationContext) } }
+    }
+
+    // === NOTE: === The single place that draws the notification during a sync. Readings only save; this follows
+    // the saved state, skipping states that were already replaced, so the newest one always lands
+    private suspend fun drawNotification() {
+        combine(batteryStateFlow(applicationContext), liveUpdateFlow(applicationContext), ::Pair).conflate().collect { (state, live) ->
+            if (state.connected) updateBatteryNotification(this, state, live)
+            delay(NOTIFICATION_GAP_MS)
+        }
+    }
+
+    // === NOTE: === True wireless buds can drop and remake the Bluetooth link when a bud goes in or out of the case.
+    // That used to end the sync and show "Not connected" mid-use. The audio profiles decide instead: none left
+    // means the buds are gone; a different address means the other earbud now holds the link
+    private suspend fun onLinkDropped() {
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter
+        val buds = adapter?.let { findProfileConnectedBuds(this, it) }
+        when {
+            buds == null -> stopSelf()
+            buds.address != budsAddress.value -> {
+                Log.d(TAG, "Link moved to ${buds.address}")
+                saveSelectedAddress(this, buds.address)
+                budsAddress.value = buds.address
+            }
+            else -> Log.d(TAG, "Link dropped but the buds are still connected; sync continues")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -127,12 +171,11 @@ class BatteryReadService : Service() {
             stopSelf()
             return
         }
-        budsAddress = buds.address
         saveSelectedAddress(this, buds.address)
         saveConnected(this, true)
-        refreshSurfaces(applicationContext)
+        budsAddress.value = buds.address
         try {
-            runBatterySync(applicationContext, adapter, buds.address, refreshes)
+            budsAddress.filterNotNull().collectLatest { address -> runBatterySync(applicationContext, adapter, address, refreshes) }
         } finally {
             withContext(NonCancellable) {
                 saveConnected(this@BatteryReadService, false)

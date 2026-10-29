@@ -6,6 +6,7 @@ import android.service.quicksettings.TileService
 import com.example.budsbattery.R
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.readBatteryState
+import com.example.budsbattery.service.startBatteryRead
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,10 +14,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Quick Settings tile. Its icon shows one bud, two buds, or buds with the case; tapping opens the AirPods-style card.
+ * Quick Settings tile. Its icon shows one bud, two buds, or buds with the case; tapping opens the battery boxes
+ * over the panel.
  *
- * @description Android tiles only hold an icon and two text lines, so the animated card lives in
- * BudsPopupActivity. Not an "active" tile: Android binds it each time the panel opens.
+ * @description Android tiles only hold an icon and two text lines, so the rings live in a card the tile shows.
+ * Not an "active" tile: Android binds it each time the panel opens.
  */
 class BudsTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -26,9 +28,10 @@ class BudsTileService : TileService() {
         scope.launch { renderTile(readBatteryState(applicationContext)) }
     }
 
-    // The card asks the sync for fresh values itself, so the tap only needs to open it
+    // Fresh values are asked for as the card opens, so the rings fill to the current level
     override fun onClick() {
-        startActivityAndCollapse(budsPopupIntent(this))
+        startBatteryRead(applicationContext, refresh = true)
+        showPanelCard { BatteryBoxesCard() }
     }
 
     override fun onDestroy() {

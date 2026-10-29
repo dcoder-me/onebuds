@@ -13,12 +13,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,13 +36,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.budsbattery.R
 import kotlin.math.roundToInt
 
 private val GAUGE_SIZE = 92.dp
 private val GAUGE_STROKE = 7.dp
-private val PART_ICON_SIZE = 38.dp
+private const val ICON_TO_GAUGE = 0.41f
+private val BOX_GAUGE_SIZE = 64.dp
+private val BOX_GAUGE_STROKE = 5.dp
+private val BOX_CORNER = 24.dp
+private val BOX_PADDING = 14.dp
+private val BOX_GAP = 8.dp
 private const val FULL_PERCENT = 100f
 private const val TRACK_ALPHA = 0.14f
 private const val OLD_ALPHA = 0.55f
@@ -68,6 +78,45 @@ fun BudsPanel(view: BudsView, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Left bud, right bud and case as three rounded boxes, each with its ring. Same rules as BudsPanel for what shows.
+ *
+ * @param view - what the screen shows
+ * @param modifier - layout modifier
+ */
+@Composable
+fun BudsBoxes(view: BudsView, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BOX_GAP)) {
+        PartBox(visible = view.waiting || view.left != null) {
+            PartGauge(R.drawable.ic_bud_left, stringResource(R.string.part_left), view.left, view.waiting, BOX_GAUGE_SIZE, BOX_GAUGE_STROKE)
+        }
+        PartBox(visible = view.waiting || view.right != null) {
+            PartGauge(R.drawable.ic_bud_right, stringResource(R.string.part_right), view.right, view.waiting, BOX_GAUGE_SIZE, BOX_GAUGE_STROKE)
+        }
+        PartBox(visible = view.case != null) {
+            PartGauge(R.drawable.ic_case, stringResource(R.string.part_case), view.case, waiting = false, BOX_GAUGE_SIZE, BOX_GAUGE_STROKE)
+        }
+    }
+}
+
+// The boxes share the row, so a box that leaves lets the others widen instead of leaving a hole
+@Composable
+private fun RowScope.PartBox(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + scaleIn() + expandHorizontally(),
+        exit = fadeOut() + shrinkHorizontally(),
+        modifier = Modifier.weight(1f),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(BOX_CORNER))
+                .padding(vertical = BOX_PADDING),
+        ) { content() }
+    }
+}
+
 @Composable
 private fun PartSlot(visible: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
@@ -78,7 +127,14 @@ private fun PartSlot(visible: Boolean, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boolean) {
+private fun PartGauge(
+    iconRes: Int,
+    label: String,
+    part: PartView?,
+    waiting: Boolean,
+    gaugeSize: Dp = GAUGE_SIZE,
+    stroke: Dp = GAUGE_STROKE,
+) {
     val percent = part?.level?.percent ?: 0
     // Starts empty and fills to the level, like the AirPods card; refills smoothly on every change
     val fill = remember { Animatable(0f) }
@@ -90,16 +146,16 @@ private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boo
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier.alpha(if (part == null || part.live) 1f else OLD_ALPHA),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(GAUGE_SIZE)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(gaugeSize)) {
             if (waiting) {
                 // Spins while this connection has no values yet, instead of showing old ones
-                CircularProgressIndicator(modifier = Modifier.size(GAUGE_SIZE), strokeWidth = GAUGE_STROKE)
+                CircularProgressIndicator(modifier = Modifier.size(gaugeSize), strokeWidth = stroke)
             } else {
                 CircularProgressIndicator(
                     progress = { fill.value },
-                    modifier = Modifier.size(GAUGE_SIZE),
+                    modifier = Modifier.size(gaugeSize),
                     color = ringColor,
-                    strokeWidth = GAUGE_STROKE,
+                    strokeWidth = stroke,
                     trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = TRACK_ALPHA),
                 )
             }
@@ -107,7 +163,7 @@ private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boo
                 painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(PART_ICON_SIZE),
+                modifier = Modifier.size(gaugeSize * ICON_TO_GAUGE),
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {

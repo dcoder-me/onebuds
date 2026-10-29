@@ -1,5 +1,6 @@
 package com.example.budsbattery.ui
 
+import android.bluetooth.BluetoothProfile
 import android.companion.AssociationInfo
 import android.companion.CompanionDeviceManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.PairedDevice
+import com.example.budsbattery.bt.isLeaving
 import com.example.budsbattery.service.startBatteryRead
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -89,7 +91,17 @@ fun BudsChip(modifier: Modifier = Modifier) {
         redetect()
         onPauseOrDispose { detecting?.cancel() }
     }
-    BudsConnectionEffect(onChange = redetect)
+    // Only a connect looks the buds up again: a lookup during a disconnect still sees them in the lagging audio list
+    // and put them back on the chip; in-between states change nothing yet
+    BudsConnectionEffect { address, state ->
+        when {
+            isLeaving(buds, address, state) -> {
+                detecting?.cancel()
+                buds = null
+            }
+            state == BluetoothProfile.STATE_CONNECTED -> redetect()
+        }
+    }
     val current = buds
     AssistChip(
         modifier = modifier,

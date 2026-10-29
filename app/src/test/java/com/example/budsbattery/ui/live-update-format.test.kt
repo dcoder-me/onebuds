@@ -9,11 +9,9 @@ import org.junit.Test
 
 private const val NOW_MS = 10_000_000_000L
 private const val MINUTE_MS = 60_000L
-private const val MODEL = "Realme Buds T310"
-
 private fun textOf(reading: BatteryReading): LiveUpdateText {
     val state = BatteryState(BatterySnapshot(reading, savedAtMillis = NOW_MS), connected = true, connectedAtMillis = NOW_MS - MINUTE_MS)
-    return liveUpdateTextOf(budsViewOf(state, NOW_MS), MODEL)
+    return liveUpdateTextOf(budsViewOf(state, NOW_MS))
 }
 
 // Expected strings are the approved preview's, state by state
@@ -49,8 +47,8 @@ class LiveUpdateFormatTest {
 
     @Test
     fun `just connected shows an active placeholder, never an empty state`() {
-        val text = liveUpdateTextOf(budsViewOf(BatteryState(snapshot = null, connected = true), NOW_MS), MODEL)
+        val text = liveUpdateTextOf(budsViewOf(BatteryState(snapshot = null, connected = true), NOW_MS))
 
-        assertEquals(LiveUpdateText("Reading battery…", MODEL, chip = null), text)
+        assertEquals(LiveUpdateText("Reading…", "Connecting…", chip = null), text)
     }
 }

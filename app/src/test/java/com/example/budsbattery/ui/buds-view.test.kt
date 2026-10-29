@@ -13,7 +13,6 @@ import org.junit.Test
 private const val NOW_MS = 10_000_000_000L
 private const val MINUTE_MS = 60_000L
 private const val HOUR_MS = 60 * MINUTE_MS
-private const val MODEL = "Realme Buds T310"
 
 // A charging bud means it sits in the case, so the case is shown
 private val reading = BatteryReading(BatteryLevel(80, true), BatteryLevel(75, false), BatteryLevel(60, false))
@@ -58,7 +57,7 @@ class BudsViewTest {
         assertNull(view.case)
         assertEquals(BudsShape.TWO_BUDS, view.shape)
         assertEquals("L 80 · R 75", formatTileSubtitle(state, NOW_MS))
-        assertEquals("Connected", liveUpdateTextOf(view, MODEL).text)
+        assertEquals("Connected", liveUpdateTextOf(view).text)
     }
 
     @Test
@@ -68,7 +67,7 @@ class BudsViewTest {
 
         assertNull(view.case)
         assertEquals("L 80 · R 75", formatTileSubtitle(state, NOW_MS))
-        assertEquals("Connected", liveUpdateTextOf(view, MODEL).text)
+        assertEquals("Connected", liveUpdateTextOf(view).text)
     }
 
     @Test

@@ -48,7 +48,7 @@ fun createBatteryChannel(context: Context) {
 fun buildBatteryNotification(context: Context, state: BatteryState, liveUpdate: Boolean): Notification {
     val view = budsViewOf(state, System.currentTimeMillis())
     val modelName = context.getString(R.string.app_subtitle)
-    val live = liveUpdateTextOf(view, modelName)
+    val live = liveUpdateTextOf(view)
     val builder = NotificationCompat.Builder(context, BATTERY_CHANNEL_ID)
         .setSmallIcon(shapeIcon(view.shape))
         .setContentTitle(live.title)
@@ -64,6 +64,8 @@ fun buildBatteryNotification(context: Context, state: BatteryState, liveUpdate: 
         .setCategory(NotificationCompat.CATEGORY_STATUS)
         .setRequestPromotedOngoing(liveUpdate)
     live.chip?.let(builder::setShortCriticalText)
+    // Moving bar while waiting for the first reading, so the placeholder reads as work in progress
+    if (view.waiting) builder.setProgress(0, 0, true)
     return builder.build()
 }
 

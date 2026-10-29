@@ -63,7 +63,7 @@ class BatteryReadService : Service() {
     // A new address restarts the routes on it, for buds whose other earbud takes over the link
     private val budsAddress = MutableStateFlow<String?>(null)
 
-    // Kept current so a repeat start (tile tap, card open) re-posts real values, not "Reading battery…"
+    // Kept current so a repeat start (tile tap, card open) re-posts real values, not "Reading…"
     @Volatile
     private var latestState = BatteryState(snapshot = null, connected = true)
 
@@ -148,7 +148,7 @@ class BatteryReadService : Service() {
 
     // === NOTE: === Android needs startForeground on every start, and this used to post a blank state each time,
     // so a tap on the tile wiped the live values until the next reading. A running sync reuses the saved state;
-    // a new one shows "Reading battery…", since saved values belong to the last connection
+    // a new one shows "Reading…", since saved values belong to the last connection
     private fun foregroundState(): BatteryState {
         val state = latestState
         return if (syncing?.isActive == true && state.connected) state else BatteryState(snapshot = null, connected = true)

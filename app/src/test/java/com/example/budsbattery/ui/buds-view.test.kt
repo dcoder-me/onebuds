@@ -90,10 +90,12 @@ class BudsViewTest {
     @Test
     fun `shape follows what is reachable`() {
         val withCase = budsViewOf(stateOf(NOW_MS, connected = true), NOW_MS)
-        val oneBud = budsViewOf(stateOf(NOW_MS, connected = true, value = reading.copy(right = null, case = null)), NOW_MS)
+        val leftOnly = budsViewOf(stateOf(NOW_MS, connected = true, value = reading.copy(right = null, case = null)), NOW_MS)
+        val rightOnly = budsViewOf(stateOf(NOW_MS, connected = true, value = reading.copy(left = null, case = null)), NOW_MS)
 
         assertEquals(BudsShape.WITH_CASE, withCase.shape)
-        assertEquals(BudsShape.ONE_BUD, oneBud.shape)
+        assertEquals(BudsShape.LEFT_BUD, leftOnly.shape)
+        assertEquals(BudsShape.RIGHT_BUD, rightOnly.shape)
     }
 
     @Test

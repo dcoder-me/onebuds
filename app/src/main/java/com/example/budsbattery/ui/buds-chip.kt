@@ -95,7 +95,7 @@ fun BudsChip(modifier: Modifier = Modifier) {
     // and put them back on the chip; in-between states change nothing yet
     BudsConnectionEffect { address, state ->
         when {
-            isLeaving(buds, address, state) -> {
+            isLeaving(buds?.address, address, state) -> {
                 detecting?.cancel()
                 buds = null
             }

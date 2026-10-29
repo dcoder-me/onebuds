@@ -4,6 +4,7 @@ import android.app.Service
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,9 +12,11 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
+import com.example.budsbattery.bt.MEDIA_PROFILE_ACTIONS
 import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.bt.findConnectedBuds
 import com.example.budsbattery.bt.findProfileConnectedBuds
+import com.example.budsbattery.bt.isLeaving
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.batteryStateFlow
 import com.example.budsbattery.data.isSelectedDevice
@@ -75,22 +78,36 @@ class BatteryReadService : Service() {
     @Volatile
     private var liveUpdate = true
 
-    // A dropped link is checked against the audio profiles before the sync ends
+    // The buds leaving media audio ends the sync at once; a bare link drop is checked against the profiles first,
+    // since one bud can drop the link while the buds stay connected
     private val disconnectReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-            if (!isSelectedDevice(budsAddress.value, device?.address)) return
+            val address = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)?.address
+            val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, BluetoothProfile.STATE_CONNECTED)
+            if (intent.action != BluetoothDevice.ACTION_ACL_DISCONNECTED) {
+                if (isLeaving(budsAddress.value, address, state)) onBudsLeft("${intent.action} says the buds left")
+                return
+            }
+            if (!isSelectedDevice(budsAddress.value, address)) return
             linkCheck?.cancel()
             linkCheck = scope.launch { onLinkDropped() }
         }
+    }
+
+    private fun onBudsLeft(reason: String) {
+        Log.d(TAG, "$reason; sync ends")
+        stopSelf()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
-        // ACL_DISCONNECTED is a protected broadcast only the system can send, so exporting is safe
-        registerReceiver(disconnectReceiver, IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED), RECEIVER_EXPORTED)
+        // These are protected broadcasts only the system can send, so exporting is safe
+        val dropFilter = IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED).apply {
+            for (action in MEDIA_PROFILE_ACTIONS) addAction(action)
+        }
+        registerReceiver(disconnectReceiver, dropFilter, RECEIVER_EXPORTED)
         scope.launch { batteryStateFlow(applicationContext).collect { latestState = it } }
         scope.launch { liveUpdateFlow(applicationContext).collect { liveUpdate = it } }
         scope.launch { drawNotification() }
@@ -114,7 +131,7 @@ class BatteryReadService : Service() {
         val adapter = getSystemService(BluetoothManager::class.java)?.adapter
         val buds = adapter?.let { awaitGone(PROFILE_RECHECK_WAITS_MS) { findProfileConnectedBuds(this, it) } }
         when {
-            buds == null -> stopSelf()
+            buds == null -> onBudsLeft("Link dropped and no audio profile has the buds")
             buds.address != budsAddress.value -> {
                 Log.d(TAG, "Link moved to ${buds.address}")
                 saveSelectedAddress(this, buds.address)

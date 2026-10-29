@@ -1,9 +1,6 @@
 package com.example.budsbattery.ui
 
-import android.bluetooth.BluetoothA2dp
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothHeadset
-import android.bluetooth.BluetoothLeAudio
 import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -13,13 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
-
-// Sent once the audio profile itself changes, so a lookup on it already sees the new state
-private val PROFILE_STATE_ACTIONS = listOf(
-    BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED,
-    BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED,
-    BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED,
-)
+import com.example.budsbattery.bt.AUDIO_PROFILE_ACTIONS
 
 /**
  * Calls back whenever an audio device connects or disconnects, for as long as the caller is on screen.
@@ -40,7 +31,7 @@ fun BudsConnectionEffect(onChange: (address: String?, state: Int) -> Unit) {
                 currentOnChange.value(device?.address, state)
             }
         }
-        val filter = IntentFilter().apply { for (action in PROFILE_STATE_ACTIONS) addAction(action) }
+        val filter = IntentFilter().apply { for (action in AUDIO_PROFILE_ACTIONS) addAction(action) }
         // These are protected broadcasts only the system can send, so exporting is safe
         context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         onDispose { context.unregisterReceiver(receiver) }

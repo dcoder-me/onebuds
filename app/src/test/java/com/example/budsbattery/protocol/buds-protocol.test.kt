@@ -21,8 +21,8 @@ class BudsProtocolTest {
 
     @Test
     fun `battery subscription has the documented bytes`() {
-        // 09 = subscribe, 01 = battery, 02 = earbuds status (in case / out of ear)
-        assertArrayEquals(hex("AA 0A 00 00 05 02 00 03 00 09 01 02"), encodeBatterySubscription(seq = 0))
+        // 02 = how many events follow (Realme Link registerMultiNotification), 01 = battery, 02 = earbuds status
+        assertArrayEquals(hex("AA 0A 00 00 05 02 00 03 00 02 01 02"), encodeBatterySubscription(seq = 0))
     }
 
     @Test
@@ -125,8 +125,29 @@ class BudsProtocolTest {
     }
 
     @Test
-    fun `unexpected header marker is rejected`() {
-        val frame = hex("AA 07 08 00 06 81 00 00 00")
+    fun `parses a battery push sent with the 0x08 flag, as logged from a T310`() {
+        // Right 100, left 100, case 70; the 08 flag rides on every push the buds send on their own
+        val frame = hex("AA 0F 08 00 04 02 07 08 00 01 03 02 64 01 64 03 46")
+
+        assertEquals(
+            BatteryFrameResult.Reading(
+                BatteryReading(BatteryLevel(100, false), BatteryLevel(100, false), BatteryLevel(70, false)),
+            ),
+            parseBatteryFrame(frame),
+        )
+    }
+
+    @Test
+    fun `fragment of a split message is rejected`() {
+        // Control bits 0-1 = 01 (first fragment); a fragment index byte follows the header
+        val frame = hex("AA 08 01 00 00 06 81 00 00 00")
+
+        assertTrue(parseBatteryFrame(frame) is BatteryFrameResult.Rejected)
+    }
+
+    @Test
+    fun `non-zero second header byte is rejected`() {
+        val frame = hex("AA 07 00 01 06 81 00 00 00")
 
         assertTrue(parseBatteryFrame(frame) is BatteryFrameResult.Rejected)
     }

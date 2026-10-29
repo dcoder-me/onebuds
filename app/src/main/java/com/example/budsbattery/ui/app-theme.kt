@@ -21,13 +21,14 @@ fun BudsTheme(content: @Composable () -> Unit) {
 }
 
 /**
- * Picks the icon that matches what is reachable: one bud, two buds, or the case while a bud sits in it.
+ * Picks the icon that matches what is reachable: the left or right bud alone, both buds, or the case while a bud sits in it.
  *
  * @param shape - shape from the shared view
  * @returns a drawable resource id
  */
 fun shapeIcon(shape: BudsShape): Int = when (shape) {
-    BudsShape.ONE_BUD -> R.drawable.ic_bud
+    BudsShape.LEFT_BUD -> R.drawable.ic_bud_left
+    BudsShape.RIGHT_BUD -> R.drawable.ic_bud_right
     BudsShape.TWO_BUDS -> R.drawable.ic_buds
     BudsShape.WITH_CASE -> R.drawable.ic_case
 }

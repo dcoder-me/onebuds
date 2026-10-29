@@ -14,8 +14,8 @@ const val LOW_PERCENT = 20
 // One bud or the case as shown. Live means read during this connection.
 data class PartView(val level: BatteryLevel, val live: Boolean)
 
-// Which picture the tile shows.
-enum class BudsShape { ONE_BUD, TWO_BUDS, WITH_CASE }
+// Which picture the tile, notification and Live Update show. A lone bud keeps its side.
+enum class BudsShape { LEFT_BUD, RIGHT_BUD, TWO_BUDS, WITH_CASE }
 
 /**
  * Everything every surface shows, derived once from the saved state.
@@ -34,7 +34,8 @@ data class BudsView(
     val shape: BudsShape
         get() = when {
             case?.live == true -> BudsShape.WITH_CASE
-            (left == null) != (right == null) -> BudsShape.ONE_BUD
+            right == null && left != null -> BudsShape.LEFT_BUD
+            left == null && right != null -> BudsShape.RIGHT_BUD
             else -> BudsShape.TWO_BUDS
         }
 

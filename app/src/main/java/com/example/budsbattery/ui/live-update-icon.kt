@@ -9,7 +9,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
-import com.example.budsbattery.R
 
 // Drawn in a 40-unit box, then scaled to the system's large-icon size
 private const val BOX = 40f
@@ -82,12 +81,7 @@ private fun drawArc(canvas: Canvas, color: Int, sweep: Float) {
 }
 
 private fun drawGlyph(context: Context, canvas: Canvas, view: BudsView, color: Int) {
-    val icon = when (view.shape) {
-        BudsShape.ONE_BUD -> R.drawable.ic_bud
-        BudsShape.WITH_CASE -> R.drawable.ic_case
-        BudsShape.TWO_BUDS -> R.drawable.ic_buds
-    }
-    val glyph = ContextCompat.getDrawable(context, icon)?.mutate() ?: return
+    val glyph = ContextCompat.getDrawable(context, shapeIcon(view.shape))?.mutate() ?: return
     val side = BOX * GLYPH_SHARE
     glyph.setTint(color)
     glyph.setBounds(0, 0, ICON_VIEWPORT, ICON_VIEWPORT)

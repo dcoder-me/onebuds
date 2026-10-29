@@ -30,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,7 +45,6 @@ private const val OLD_ALPHA = 0.55f
 private const val FILL_MS = 900
 private const val PULSE_MS = 700
 private const val PULSE_MIN_ALPHA = 0.3f
-private const val MIRRORED = -1f
 
 /**
  * Left bud, right bud and case side by side, each with a ring that fills up. A bud out of reach
@@ -59,13 +57,13 @@ private const val MIRRORED = -1f
 fun BudsPanel(view: BudsView, modifier: Modifier = Modifier) {
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         PartSlot(visible = view.waiting || view.left != null) {
-            PartGauge(R.drawable.ic_bud, stringResource(R.string.part_left), view.left, view.waiting, mirrored = false)
+            PartGauge(R.drawable.ic_bud_left, stringResource(R.string.part_left), view.left, view.waiting)
         }
         PartSlot(visible = view.waiting || view.right != null) {
-            PartGauge(R.drawable.ic_bud, stringResource(R.string.part_right), view.right, view.waiting, mirrored = true)
+            PartGauge(R.drawable.ic_bud_right, stringResource(R.string.part_right), view.right, view.waiting)
         }
         PartSlot(visible = view.case != null) {
-            PartGauge(R.drawable.ic_case, stringResource(R.string.part_case), view.case, waiting = false, mirrored = false)
+            PartGauge(R.drawable.ic_case, stringResource(R.string.part_case), view.case, waiting = false)
         }
     }
 }
@@ -80,7 +78,7 @@ private fun PartSlot(visible: Boolean, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boolean, mirrored: Boolean) {
+private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boolean) {
     val percent = part?.level?.percent ?: 0
     // Starts empty and fills to the level, like the AirPods card; refills smoothly on every change
     val fill = remember { Animatable(0f) }
@@ -109,7 +107,7 @@ private fun PartGauge(iconRes: Int, label: String, part: PartView?, waiting: Boo
                 painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(PART_ICON_SIZE).graphicsLayer(scaleX = if (mirrored) MIRRORED else 1f),
+                modifier = Modifier.size(PART_ICON_SIZE),
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {

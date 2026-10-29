@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One T310-style bud: round head with a sensor dot, ear tip, and stem. Monochrome so the system can tint it. -->
+<!-- Left T310-style bud as worn, seen from behind: ear tip points right, toward the head. Monochrome so the system can tint it. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

@@ -4,6 +4,7 @@ import com.example.budsbattery.data.BatteryLevel
 import com.example.budsbattery.data.BatteryState
 
 private const val SEPARATOR = " · "
+private const val CHIP_BOLT = "⚡"
 private const val CHARGING_MARK = " ⚡"
 private const val NOT_READ_YET = "Not read yet"
 private const val READING = "Reading…"
@@ -23,14 +24,17 @@ fun formatBudsLine(view: BudsView): String = listOfNotNull(
 ).joinToString(SEPARATOR)
 
 /**
- * Builds the tiny status-bar chip text of the Live Update: the bud that runs out first.
+ * Builds the tiny status-bar chip text of the Live Update: the case while a bud sits in it, else the bud that runs out first.
  *
- * @description The chip is at most 96dp and shows full text only under 7 characters, so one number fits.
+ * @description The chip is at most 96dp and shows full text only under 7 characters, so one number and a bolt fit.
  * @param view - what the screen shows
- * @returns text such as "75%", or an empty string when no bud is live
+ * @returns text such as "75%" or "⚡60%", or an empty string when nothing is live
  */
-fun formatChipText(view: BudsView): String =
-    view.lowerBud?.takeIf { it.live }?.let { "${it.level.percent}%" }.orEmpty()
+fun formatChipText(view: BudsView): String {
+    val part = view.focus?.takeIf { it.live } ?: return ""
+    val bolt = if (view.focusCharging) CHIP_BOLT else ""
+    return "$bolt${part.level.percent}%"
+}
 
 /**
  * Builds the tile subtitle from the shared view.

@@ -17,10 +17,11 @@ private val fullReading = BatteryReading(
     case = BatteryLevel(60, charging = false),
 )
 
-private fun live(reading: BatteryReading) = BatteryState(
+private fun live(reading: BatteryReading, budInCase: Boolean? = null) = BatteryState(
     snapshot = BatterySnapshot(reading, savedAtMillis = NOW_MS),
     connected = true,
     connectedAtMillis = NOW_MS - MINUTE_MS,
+    budInCase = budInCase,
 )
 
 class BatteryFormatTest {
@@ -67,8 +68,48 @@ class BatteryFormatTest {
 
     @Test
     fun `chip shows the bud that runs out first`() {
-        assertEquals("75%", formatChipText(budsViewOf(live(fullReading), NOW_MS)))
-        assertEquals("80%", formatChipText(budsViewOf(live(fullReading.copy(right = null)), NOW_MS)))
+        val out = fullReading.copy(right = BatteryLevel(75, false))
+
+        assertEquals("75%", formatChipText(budsViewOf(live(out, budInCase = false), NOW_MS)))
+        assertEquals("80%", formatChipText(budsViewOf(live(out.copy(right = null, case = null), budInCase = false), NOW_MS)))
+    }
+
+    @Test
+    fun `chip shows the case, not a bud, while a bud sits in the case`() {
+        val view = budsViewOf(live(fullReading, budInCase = true), NOW_MS)
+
+        assertEquals("⚡60%", formatChipText(view))
+    }
+
+    @Test
+    fun `chip has no bolt when full buds in the case are not charging`() {
+        val full = BatteryReading(BatteryLevel(100, false), BatteryLevel(100, false), BatteryLevel(60, false))
+
+        assertEquals("60%", formatChipText(budsViewOf(live(full, budInCase = true), NOW_MS)))
+    }
+
+    @Test
+    fun `chip shows the lower bud with a bolt when only buds are out and one charges`() {
+        val view = budsViewOf(live(fullReading, budInCase = false), NOW_MS)
+
+        assertEquals("⚡75%", formatChipText(view))
+    }
+
+    @Test
+    fun `chip falls back to the bud when the case level is unknown`() {
+        val view = budsViewOf(live(fullReading.copy(case = null), budInCase = true), NOW_MS)
+
+        assertEquals("⚡75%", formatChipText(view))
+    }
+
+    @Test
+    fun `low follows the case while in the case, the bud otherwise`() {
+        val lowCase = fullReading.copy(case = BatteryLevel(15, false))
+        val lowBud = fullReading.copy(left = BatteryLevel(10, false))
+
+        assertEquals(true, budsViewOf(live(lowCase, budInCase = true), NOW_MS).low)
+        assertEquals(false, budsViewOf(live(lowBud, budInCase = true), NOW_MS).low)
+        assertEquals(true, budsViewOf(live(lowBud, budInCase = false), NOW_MS).low)
     }
 
     @Test

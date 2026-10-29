@@ -45,7 +45,7 @@ class BudsViewTest {
 
         assertTrue(view.left!!.live && view.right!!.live && view.case!!.live)
         assertEquals("Connected", view.status)
-        assertEquals("75%", formatChipText(view))
+        assertEquals("⚡60%", formatChipText(view))
         assertEquals("L 80 ⚡ · R 75 · Case 60", formatTileSubtitle(state, NOW_MS))
     }
 

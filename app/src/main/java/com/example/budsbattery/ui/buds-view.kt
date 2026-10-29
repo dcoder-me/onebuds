@@ -42,11 +42,19 @@ data class BudsView(
     val lowerBud: PartView?
         get() = listOfNotNull(left, right).minByOrNull { it.level.percent }
 
+    // The part the chip, the ring and the colour follow: the case while a bud sits in it, else the lower bud
+    val focus: PartView?
+        get() = case ?: lowerBud
+
     val low: Boolean
-        get() = lowerBud?.let { it.level.percent <= LOW_PERCENT } == true
+        get() = focus?.let { it.level.percent <= LOW_PERCENT } == true
 
     val budsCharging: Boolean
         get() = left?.level?.charging == true || right?.level?.charging == true
+
+    // Bolt on the chip and ring: buds charging (in the case) or the focused part itself charging
+    val focusCharging: Boolean
+        get() = budsCharging || focus?.level?.charging == true
 }
 
 /**

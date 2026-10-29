@@ -31,7 +31,7 @@ private val LIGHT_COLORS = RingColors(0xFF1F7A5C.toInt(), 0xFFC4402F.toInt(), 0x
 private val DARK_COLORS = RingColors(0xFF6FD1AA.toInt(), 0xFFFF8A78.toInt(), 0x1FE8EFEC, 0xFFE8EFEC.toInt())
 
 /**
- * Draws the ring picture for the Live Update: the lower bud's level, the buds in the middle, a bolt when charging.
+ * Draws the ring picture for the Live Update: the case level while a bud sits in it (else the lower bud), its picture in the middle, a bolt when charging.
  *
  * @description A large icon is a plain picture, not a custom layout, so Android still promotes the notification.
  * @param context - app context, for size, theme and the buds drawable
@@ -47,7 +47,7 @@ fun liveUpdateIcon(context: Context, view: BudsView): Bitmap {
     drawArc(canvas, colors.track, FULL_SWEEP)
     drawArc(canvas, if (view.low) colors.low else colors.accent, sweepOf(view))
     drawGlyph(context, canvas, view, colors.glyph)
-    if (view.budsCharging) drawBolt(canvas)
+    if (view.focusCharging) drawBolt(canvas)
     return bitmap
 }
 
@@ -65,7 +65,7 @@ private fun colorsFor(context: Context): RingColors =
 
 // While nothing is read yet a short arc stands in, so the picture never looks empty
 private fun sweepOf(view: BudsView): Float {
-    val lower = view.lowerBud
+    val lower = view.focus
     if (view.waiting || lower == null) return FULL_SWEEP * WAITING_SHARE
     return FULL_SWEEP * lower.level.percent / FULL_PERCENT
 }
@@ -82,7 +82,11 @@ private fun drawArc(canvas: Canvas, color: Int, sweep: Float) {
 }
 
 private fun drawGlyph(context: Context, canvas: Canvas, view: BudsView, color: Int) {
-    val icon = if (view.shape == BudsShape.ONE_BUD) R.drawable.ic_bud else R.drawable.ic_buds
+    val icon = when (view.shape) {
+        BudsShape.ONE_BUD -> R.drawable.ic_bud
+        BudsShape.WITH_CASE -> R.drawable.ic_case
+        BudsShape.TWO_BUDS -> R.drawable.ic_buds
+    }
     val glyph = ContextCompat.getDrawable(context, icon)?.mutate() ?: return
     val side = BOX * GLYPH_SHARE
     glyph.setTint(color)

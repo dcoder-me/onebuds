@@ -21,7 +21,7 @@ class LiveUpdateFormatTest {
     fun `in the case with the lid open`() {
         val text = textOf(BatteryReading(BatteryLevel(80, true), BatteryLevel(75, true), BatteryLevel(60, false)))
 
-        assertEquals(LiveUpdateText("Left 80%  ·  Right 75%", "Charging  ·  Case 60%", "75%"), text)
+        assertEquals(LiveUpdateText("Left 80%  ·  Right 75%", "Charging  ·  Case 60%", "⚡60%"), text)
     }
 
     @Test

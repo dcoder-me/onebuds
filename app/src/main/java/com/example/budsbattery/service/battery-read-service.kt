@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
+import java.util.concurrent.atomic.AtomicBoolean
 import com.example.budsbattery.bt.MEDIA_PROFILE_ACTIONS
 import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.bt.findConnectedBuds
@@ -65,6 +66,9 @@ class BatteryReadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val refreshes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var syncing: Job? = null
+
+    // Set by whichever path saves "disconnected" first; the other one must not write it again later
+    private val endSaved = AtomicBoolean(false)
     private var linkCheck: Job? = null
 
     // A new address restarts the routes on it, for buds whose other earbud takes over the link
@@ -94,9 +98,21 @@ class BatteryReadService : Service() {
         }
     }
 
+    // === NOTE: === Saved before stopping: the sync's own cleanup waits for Bluetooth connects that cannot be
+    // interrupted, which kept the card on "Connected" for about 20 s after the buds left
     private fun onBudsLeft(reason: String) {
         Log.d(TAG, "$reason; sync ends")
-        stopSelf()
+        scope.launch {
+            saveEnd()
+            stopSelf()
+        }
+    }
+
+    // Written once per sync: a late write from a finished sync would mark buds that reconnected meanwhile as gone
+    private suspend fun saveEnd() {
+        if (!endSaved.compareAndSet(false, true)) return
+        saveConnected(this, false)
+        refreshSurfaces(this)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -198,10 +214,7 @@ class BatteryReadService : Service() {
         try {
             budsAddress.filterNotNull().collectLatest { address -> runBatterySync(applicationContext, adapter, address, refreshes) }
         } finally {
-            withContext(NonCancellable) {
-                saveConnected(this@BatteryReadService, false)
-                refreshSurfaces(this@BatteryReadService)
-            }
+            withContext(NonCancellable) { saveEnd() }
             stopSelf()
         }
     }

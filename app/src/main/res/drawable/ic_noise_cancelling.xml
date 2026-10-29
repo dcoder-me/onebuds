@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Noise cancelling: the sound (dot) sealed inside a closed ring. Same family as ic_noise_off and ic_noise_transparency. -->
+<!-- Noise cancelling: one wave calmed into a flat line, outside sound stopped. Same family as ic_noise_off and ic_noise_transparency. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,8.8a3.2,3.2 0 1,0 0,6.4a3.2,3.2 0 1,0 0,-6.4z" />
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M2,12c1.5,-7 3,-7 4.5,0s3,7 4.5,0" />
     <path
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2"
-        android:pathData="M12,3.8a8.2,8.2 0 1,0 0,16.4a8.2,8.2 0 1,0 0,-16.4z" />
+        android:strokeWidth="2.1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M11,12h11" />
 </vector>

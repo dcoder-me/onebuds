@@ -38,7 +38,7 @@ fun createBatteryChannel(context: Context) {
  * Builds the ongoing battery notification the sync service runs under.
  *
  * @description Asks Android 16 to promote it to a Live Update (top of the shade, status-bar pill).
- * Only promotable parts are used: text, small icon, a drawn large icon and an accent colour, no custom layout.
+ * Only promotable parts are used: text, small icon, a drawn large icon, an accent colour and a plain action, no custom layout.
  * Android or the phone maker may decline; it then stays a normal pinned notification.
  * @param context - app context
  * @param state - saved values and connection flag
@@ -49,12 +49,13 @@ fun buildBatteryNotification(context: Context, state: BatteryState, liveUpdate: 
     val view = budsViewOf(state, System.currentTimeMillis())
     val modelName = context.getString(R.string.app_subtitle)
     val live = liveUpdateTextOf(view)
+    val mode = noiseModeOf(state)
     val builder = NotificationCompat.Builder(context, BATTERY_CHANNEL_ID)
         .setSmallIcon(shapeIcon(view.shape))
         .setContentTitle(live.title)
         .setContentText(live.text)
         .setSubText(modelName)
-        .setLargeIcon(liveUpdateIcon(context, view))
+        .setLargeIcon(liveUpdateIcon(context, view, mode))
         .setColor(liveAccentColor(context, view.low))
         .setContentIntent(budsPopupIntent(context))
         .setOngoing(true)
@@ -64,6 +65,8 @@ fun buildBatteryNotification(context: Context, state: BatteryState, liveUpdate: 
         .setCategory(NotificationCompat.CATEGORY_STATUS)
         .setRequestPromotedOngoing(liveUpdate)
     live.chip?.let(builder::setShortCriticalText)
+    // Only the active mode shows; a tap steps to the next, so the card stays one button wide
+    mode?.let { builder.addAction(noiseIcon(it), noiseLabel(it), nextNoiseModeIntent(context)) }
     // Moving bar while waiting for the first reading, so the placeholder reads as work in progress
     if (view.waiting) builder.setProgress(0, 0, true)
     return builder.build()

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Noise control off: the empty ring struck through. -->
+<!-- Noise control off: a low, even wave, sound left as it is. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,11 +7,8 @@
     android:viewportHeight="24">
     <path
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2"
-        android:pathData="M12,3.8a8.2,8.2 0 1,0 0,16.4a8.2,8.2 0 1,0 0,-16.4z" />
-    <path
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2"
+        android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M6.2,6.2L17.8,17.8" />
+        android:strokeLineJoin="round"
+        android:pathData="M2,12c1.25,-3 2.5,-3 3.75,0s2.5,3 3.75,0 2.5,-3 3.75,0 2.5,3 3.75,0 2.5,-3 3.75,0" />
 </vector>

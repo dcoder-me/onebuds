@@ -10,8 +10,10 @@ import com.example.budsbattery.data.readBatteryState
 import com.example.budsbattery.data.readLiveUpdate
 import com.example.budsbattery.data.saveBudInCase
 import com.example.budsbattery.data.saveReading
+import com.example.budsbattery.ui.BatteryWidget
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
+import com.example.budsbattery.ui.NoiseWidget
 import com.example.budsbattery.ui.updateBatteryNotification
 
 /**
@@ -36,7 +38,7 @@ suspend fun publishPlacement(context: Context, budInCase: Boolean) {
 }
 
 /**
- * Pushes the saved state and the Live Update switch to the tile, the widget and, while connected, the notification.
+ * Pushes the saved state and the Live Update switch to the tile, the widgets and, while connected, the notification.
  *
  * @param context - app context
  */
@@ -48,11 +50,13 @@ suspend fun refreshSurfaces(context: Context) {
 }
 
 /**
- * Asks the tile and the widget to redraw from the saved state.
+ * Asks the tile and every widget to redraw from the saved state.
  *
  * @param context - app context
  */
 suspend fun refreshHomeSurfaces(context: Context) {
     TileService.requestListeningState(context, ComponentName(context, BudsTileService::class.java))
     BudsWidget().updateAll(context)
+    BatteryWidget().updateAll(context)
+    NoiseWidget().updateAll(context)
 }

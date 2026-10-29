@@ -4,7 +4,12 @@
     <string name="app_subtitle">Realme Buds T310</string>
     <string name="tile_label">Realme Buds</string>
     <string name="channel_name">Battery</string>
-    <string name="widget_description">Realme Buds battery</string>
+    <string name="widget_label">Buds and noise</string>
+    <string name="widget_description">Battery and noise control, from 1×1 to 4×2</string>
+    <string name="battery_widget_label">Buds battery</string>
+    <string name="battery_widget_description">Left, right and case battery</string>
+    <string name="noise_widget_label">Noise control</string>
+    <string name="noise_widget_description">Switch noise cancelling, off or aware</string>
 
     <string name="no_reading">No values yet</string>
 

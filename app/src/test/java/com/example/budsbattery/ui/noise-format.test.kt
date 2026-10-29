@@ -36,4 +36,16 @@ class NoiseFormatTest {
         assert(hints.none(String::isBlank))
         assertEquals(hints.size, hints.toSet().size)
     }
+
+    @Test
+    fun `tapping the active mode steps through every mode and wraps around`() {
+        assertEquals(NoiseMode.OFF, nextNoiseMode(NoiseMode.NOISE_CANCELLING))
+        assertEquals(NoiseMode.TRANSPARENCY, nextNoiseMode(NoiseMode.OFF))
+        assertEquals(NoiseMode.NOISE_CANCELLING, nextNoiseMode(NoiseMode.TRANSPARENCY))
+    }
+
+    @Test
+    fun `small widgets use the short names from the design`() {
+        assertEquals(listOf("ANC", "Off", "Aware"), NoiseMode.entries.map(::noiseShortLabel))
+    }
 }

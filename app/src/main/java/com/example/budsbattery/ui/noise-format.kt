@@ -28,6 +28,26 @@ fun noiseLabel(mode: NoiseMode): String = when (mode) {
 }
 
 /**
+ * Names a noise mode in one short word, for widgets too small for the full name.
+ *
+ * @param mode - noise mode
+ * @returns "ANC", "Off" or "Aware"
+ */
+fun noiseShortLabel(mode: NoiseMode): String = when (mode) {
+    NoiseMode.NOISE_CANCELLING -> "ANC"
+    NoiseMode.OFF -> "Off"
+    NoiseMode.TRANSPARENCY -> "Aware"
+}
+
+/**
+ * Picks the mode a single tap moves to, for surfaces that show only the active mode.
+ *
+ * @param mode - mode the buds are in now
+ * @returns the next mode in selector order, wrapping from the last back to the first
+ */
+fun nextNoiseMode(mode: NoiseMode): NoiseMode = NoiseMode.entries.let { it[(it.indexOf(mode) + 1) % it.size] }
+
+/**
  * Says in a few words what a noise mode does to outside sound.
  *
  * @param mode - noise mode

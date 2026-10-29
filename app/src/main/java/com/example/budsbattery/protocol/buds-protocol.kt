@@ -4,14 +4,17 @@ import com.example.budsbattery.data.BatteryLevel
 import com.example.budsbattery.data.BatteryReading
 
 // === NOTE: === Oppo-family frame layout (little-endian), checked against Gadgetbridge's Oppo code.
-// Frame: AA | LEB128 length | 00 00 or 04 00 | command (2) | seq (1) | payload length (2) | payload
+// Frame: AA | LEB128 length | control (1) | 00 | command (2) | seq (1) | payload length (2) | payload
+// Control layout from Realme Link's OPPOv1Wrapper: bits 0-1 = fragment state, higher bits = sender flags
 
 const val PREAMBLE: Byte = 0xAA.toByte()
 
 private const val BYTE_MASK = 0xFF
 private const val SHORT_BYTE_BITS = 8
 private const val HEADER_BYTES = 7
-private val ACCEPTED_HEADER_MARKERS = setOf(0x0000, 0x0004)
+private const val FRAGMENT_STATE_MASK = 0x03
+private const val FRAGMENT_WHOLE = 0x00
+private const val HEADER_RESERVED = 0x00
 
 private const val COMMAND_BATTERY_REQUEST = 0x0106
 private const val COMMAND_BATTERY_REPLY = 0x8106
@@ -19,9 +22,10 @@ private const val COMMAND_SUBSCRIPTION_SET = 0x0205
 private const val COMMAND_SUBSCRIPTION_PUSH = 0x0204
 private const val COMMAND_STATUS_REQUEST = 0x0109
 private const val COMMAND_STATUS_REPLY = 0x8109
-private const val SUBSCRIPTION_MARKER = 0x09
 private const val SUBSCRIPTION_BATTERY = 0x01
 private const val SUBSCRIPTION_STATUS = 0x02
+
+private val SUBSCRIPTION_EVENTS = listOf(SUBSCRIPTION_BATTERY, SUBSCRIPTION_STATUS)
 
 // Earbuds status per side (Gadgetbridge EarbudsStatusValue): 00 in case, 01 out of ear, 03 ready
 private const val STATUS_IN_CASE = 0x00
@@ -83,7 +87,8 @@ fun encodeStatusRequest(seq: Int): ByteArray = encodeFrame(COMMAND_STATUS_REQUES
 fun encodeBatterySubscription(seq: Int): ByteArray = encodeFrame(
     COMMAND_SUBSCRIPTION_SET,
     seq,
-    byteArrayOf(SUBSCRIPTION_MARKER.toByte(), SUBSCRIPTION_BATTERY.toByte(), SUBSCRIPTION_STATUS.toByte()),
+    // Count first, then the event ids; a wrong count makes the buds read past the ids into junk
+    byteArrayOf(SUBSCRIPTION_EVENTS.size.toByte(), *SUBSCRIPTION_EVENTS.map { it.toByte() }.toByteArray()),
 )
 
 /**
@@ -122,8 +127,9 @@ fun parseBatteryFrame(frame: ByteArray): BatteryFrameResult {
     if (body.size != length.value) return rejected("Length does not match frame")
     if (body.size < HEADER_BYTES) return rejected("Header cut short")
 
-    val marker = readShortLe(body, 0)
-    if (marker !in ACCEPTED_HEADER_MARKERS) return rejected("Unexpected header 0x%04X".format(marker))
+    // Pushes carry flag 0x08 and replies 0x04; only the fragment bits change the layout
+    if (body[0].unsigned() and FRAGMENT_STATE_MASK != FRAGMENT_WHOLE) return rejected("Fragment of a split message")
+    if (body[1].unsigned() != HEADER_RESERVED) return rejected("Unexpected header 0x%04X".format(readShortLe(body, 0)))
     val command = readShortLe(body, 2)
     if (command !in setOf(COMMAND_BATTERY_REPLY, COMMAND_SUBSCRIPTION_PUSH, COMMAND_STATUS_REPLY)) return BatteryFrameResult.Ignored
     if (readShortLe(body, 5) != body.size - HEADER_BYTES) return rejected("Payload length mismatch")

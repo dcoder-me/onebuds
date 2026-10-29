@@ -26,6 +26,7 @@ private val savedAtKey = longPreferencesKey("saved_at")
 private val sourceKey = stringPreferencesKey("source")
 private val connectedKey = booleanPreferencesKey("connected")
 private val connectedAtKey = longPreferencesKey("connected_at")
+private val budInCaseKey = booleanPreferencesKey("bud_in_case")
 
 /**
  * Reads the last saved values and the connection flag.
@@ -47,6 +48,7 @@ private fun toBatteryState(prefs: Preferences): BatteryState = BatteryState(
     snapshot = snapshotOf(prefs),
     connected = prefs[connectedKey] ?: false,
     connectedAtMillis = prefs[connectedAtKey],
+    budInCase = prefs[budInCaseKey],
 )
 
 private fun snapshotOf(prefs: Preferences): BatterySnapshot? = prefs[savedAtKey]?.let { savedAt ->
@@ -91,8 +93,20 @@ suspend fun saveReading(context: Context, reading: BatteryReading, source: ReadS
 suspend fun saveConnected(context: Context, connected: Boolean, nowMillis: Long = System.currentTimeMillis()) {
     context.batteryDataStore.edit { prefs ->
         prefs[connectedKey] = connected
+        // The last connection's in-case status says nothing about this one
+        prefs.remove(budInCaseKey)
         if (connected) prefs[connectedAtKey] = nowMillis
     }
+}
+
+/**
+ * Stores whether the buds report a bud in the case. Cleared on every connect and disconnect.
+ *
+ * @param context - app context used to open the DataStore file
+ * @param budInCase - true while at least one bud sits in the case
+ */
+suspend fun saveBudInCase(context: Context, budInCase: Boolean) {
+    context.batteryDataStore.edit { prefs -> prefs[budInCaseKey] = budInCase }
 }
 
 private fun readPart(prefs: Preferences, keys: PartKeys): BatteryLevel? {

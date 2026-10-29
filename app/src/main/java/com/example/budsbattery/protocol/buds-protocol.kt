@@ -17,8 +17,14 @@ private const val COMMAND_BATTERY_REQUEST = 0x0106
 private const val COMMAND_BATTERY_REPLY = 0x8106
 private const val COMMAND_SUBSCRIPTION_SET = 0x0205
 private const val COMMAND_SUBSCRIPTION_PUSH = 0x0204
+private const val COMMAND_STATUS_REQUEST = 0x0109
+private const val COMMAND_STATUS_REPLY = 0x8109
 private const val SUBSCRIPTION_MARKER = 0x09
 private const val SUBSCRIPTION_BATTERY = 0x01
+private const val SUBSCRIPTION_STATUS = 0x02
+
+// Earbuds status per side (Gadgetbridge EarbudsStatusValue): 00 in case, 01 out of ear, 03 ready
+private const val STATUS_IN_CASE = 0x00
 
 private const val PAYLOAD_STATUS_OK = 0x00
 private const val PAYLOAD_PREFIX_BYTES = 2
@@ -41,6 +47,9 @@ private const val LEB128_BITS_PER_BYTE = 7
 /** Result of reading one frame from the buds. */
 sealed interface BatteryFrameResult {
     data class Reading(val reading: BatteryReading) : BatteryFrameResult
+
+    // Whether at least one bud sits in the case, as the buds themselves report it
+    data class Placement(val budInCase: Boolean) : BatteryFrameResult
     data class Rejected(val reason: String) : BatteryFrameResult
     data object Ignored : BatteryFrameResult
 }
@@ -58,7 +67,15 @@ data class FrameSplit(val frames: List<ByteArray>, val leftover: ByteArray)
 fun encodeBatteryRequest(seq: Int): ByteArray = encodeFrame(COMMAND_BATTERY_REQUEST, seq, ByteArray(0))
 
 /**
- * Builds the request that makes the buds push battery changes without being asked.
+ * Builds the request that asks the buds whether each bud is in the case, out of the ear, or ready.
+ *
+ * @param seq - frame counter; the buds echo it back in the reply
+ * @returns the raw bytes to write to the socket
+ */
+fun encodeStatusRequest(seq: Int): ByteArray = encodeFrame(COMMAND_STATUS_REQUEST, seq, ByteArray(0))
+
+/**
+ * Builds the request that makes the buds push battery and in-case changes without being asked.
  *
  * @param seq - frame counter; the buds echo it back in the reply
  * @returns the raw bytes to write to the socket
@@ -66,7 +83,7 @@ fun encodeBatteryRequest(seq: Int): ByteArray = encodeFrame(COMMAND_BATTERY_REQU
 fun encodeBatterySubscription(seq: Int): ByteArray = encodeFrame(
     COMMAND_SUBSCRIPTION_SET,
     seq,
-    byteArrayOf(SUBSCRIPTION_MARKER.toByte(), SUBSCRIPTION_BATTERY.toByte()),
+    byteArrayOf(SUBSCRIPTION_MARKER.toByte(), SUBSCRIPTION_BATTERY.toByte(), SUBSCRIPTION_STATUS.toByte()),
 )
 
 /**
@@ -108,16 +125,18 @@ fun parseBatteryFrame(frame: ByteArray): BatteryFrameResult {
     val marker = readShortLe(body, 0)
     if (marker !in ACCEPTED_HEADER_MARKERS) return rejected("Unexpected header 0x%04X".format(marker))
     val command = readShortLe(body, 2)
-    if (command != COMMAND_BATTERY_REPLY && command != COMMAND_SUBSCRIPTION_PUSH) return BatteryFrameResult.Ignored
+    if (command !in setOf(COMMAND_BATTERY_REPLY, COMMAND_SUBSCRIPTION_PUSH, COMMAND_STATUS_REPLY)) return BatteryFrameResult.Ignored
     if (readShortLe(body, 5) != body.size - HEADER_BYTES) return rejected("Payload length mismatch")
 
     val payload = body.copyOfRange(HEADER_BYTES, body.size)
-    // A push starts with its subscription type instead of a status byte; only battery pushes matter here
-    if (command == COMMAND_SUBSCRIPTION_PUSH) {
-        if (payload.firstOrNull()?.unsigned() != SUBSCRIPTION_BATTERY) return BatteryFrameResult.Ignored
-        return parseBatteryPairs(payload)
+    // A push starts with its subscription type instead of a status byte; the rest has the reply's layout
+    return when {
+        command == COMMAND_STATUS_REPLY -> parsePlacement(payload)
+        command == COMMAND_BATTERY_REPLY -> parseBatteryPayload(payload)
+        payload.firstOrNull()?.unsigned() == SUBSCRIPTION_BATTERY -> parseBatteryPairs(payload)
+        payload.firstOrNull()?.unsigned() == SUBSCRIPTION_STATUS -> parsePlacement(payload)
+        else -> BatteryFrameResult.Ignored
     }
-    return parseBatteryPayload(payload)
 }
 
 /**
@@ -182,6 +201,14 @@ private fun parseBatteryPairs(payload: ByteArray): BatteryFrameResult {
         reading = withLevel(reading, index, decodeLevel(pair[1].unsigned(), isCase = index == INDEX_CASE))
     }
     return BatteryFrameResult.Reading(reading)
+}
+
+// Same pair layout as battery: count, then side/status pairs (Gadgetbridge EarbudsStatusModule)
+private fun parsePlacement(payload: ByteArray): BatteryFrameResult {
+    if (payload.size < PAYLOAD_PREFIX_BYTES) return rejected("Status payload too short")
+    if ((payload.size - PAYLOAD_PREFIX_BYTES) % PAIR_BYTES != 0) return rejected("Status pairs cut short")
+    val statuses = payload.drop(PAYLOAD_PREFIX_BYTES).chunked(PAIR_BYTES).map { it[1].unsigned() }
+    return BatteryFrameResult.Placement(budInCase = STATUS_IN_CASE in statuses)
 }
 
 // Out-of-range levels and an empty case become null, so the UI never shows a fake 0%

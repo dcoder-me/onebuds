@@ -19,8 +19,13 @@ private const val MODEL = "Realme Buds T310"
 private val reading = BatteryReading(BatteryLevel(80, true), BatteryLevel(75, false), BatteryLevel(60, false))
 private val budsOut = BatteryReading(BatteryLevel(80, false), BatteryLevel(75, false), BatteryLevel(60, false))
 
-private fun stateOf(savedAt: Long, connected: Boolean, value: BatteryReading = reading, connectedAt: Long = NOW_MS - MINUTE_MS) =
-    BatteryState(BatterySnapshot(value, savedAt), connected, connectedAt)
+private fun stateOf(
+    savedAt: Long,
+    connected: Boolean,
+    value: BatteryReading = reading,
+    connectedAt: Long = NOW_MS - MINUTE_MS,
+    budInCase: Boolean? = null,
+) = BatteryState(BatterySnapshot(value, savedAt), connected, connectedAt, budInCase)
 
 class BudsViewTest {
 
@@ -64,6 +69,18 @@ class BudsViewTest {
         assertNull(view.case)
         assertEquals("L 80 · R 75", formatTileSubtitle(state, NOW_MS))
         assertEquals("Connected", liveUpdateTextOf(view, MODEL).text)
+    }
+
+    @Test
+    fun `full buds in the case show the case, though they no longer charge`() {
+        val view = budsViewOf(stateOf(NOW_MS, connected = true, value = budsOut, budInCase = true), NOW_MS)
+
+        assertEquals(60, view.case?.level?.percent)
+    }
+
+    @Test
+    fun `the buds' own in-case status wins over the charging guess`() {
+        assertNull(budsViewOf(stateOf(NOW_MS, connected = true, budInCase = false), NOW_MS).case)
     }
 
     @Test

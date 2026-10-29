@@ -8,6 +8,9 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.util.Log
 import kotlin.coroutines.resume
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -31,7 +34,10 @@ private val BLUETOOTH_OUTPUT_TYPES = setOf(
  * @returns the connected buds, likely buds first by name, or null when no audio device is connected
  */
 suspend fun findConnectedBuds(context: Context, adapter: BluetoothAdapter): PairedDevice? {
-    val fromProfiles = AUDIO_PROFILES.flatMap { profile -> connectedOnProfile(context, adapter, profile) }
+    // Asked side by side: one at a time, each silent profile cost its full timeout before the next began
+    val fromProfiles = coroutineScope {
+        AUDIO_PROFILES.map { profile -> async { connectedOnProfile(context, adapter, profile) } }.awaitAll().flatten()
+    }
     // Second official source: some phones keep the profile list empty while audio still routes to the buds
     val devices = (fromProfiles + bluetoothAudioOutputs(context)).distinctBy { it.address.uppercase() }
     Log.d(TAG, "Connected audio devices: $devices")

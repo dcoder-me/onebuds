@@ -24,12 +24,15 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.service.startBatteryRead
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val CHIP_ICON_SIZE = 18.dp
+private const val DETECT_ATTEMPTS = 3
+private const val DETECT_WAIT_MS = 2_000L
 
 /**
- * The selected buds, top right. Tap to detect them, then to link them so battery reads by itself.
+ * The selected buds, top right. Detects and links by itself when the screen opens; tapping is the manual fallback.
  *
  * @param modifier - layout modifier
  */
@@ -39,16 +42,14 @@ fun BudsChip(modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     var buds by remember { mutableStateOf<PairedDevice?>(null) }
     var linked by remember { mutableStateOf(false) }
+    // The link dialog opens by itself once per screen; after a "Don't allow" only a tap brings it back
+    var askedToLink by remember { mutableStateOf(false) }
     // Finding the buds also starts the sync, so opening the app is enough to get live values
     val refresh: suspend () -> Unit = {
         val found = detectBuds(context)
         buds = found
         linked = found?.let { isLinked(context, it.address) } ?: false
         if (found != null) startBatteryRead(context)
-    }
-    LifecycleResumeEffect(Unit) {
-        val job = scope.launch { refresh() }
-        onPauseOrDispose { job.cancel() }
     }
     val onLinked: (AssociationInfo) -> Unit = { info ->
         scope.launch {
@@ -60,6 +61,26 @@ fun BudsChip(modifier: Modifier = Modifier) {
         result.data?.getParcelableExtra(CompanionDeviceManager.EXTRA_ASSOCIATION, AssociationInfo::class.java)
             ?.let(onLinked)
     }
+    val link: (PairedDevice) -> Unit = { found ->
+        linkBuds(context, found.address, { sender -> linkLauncher.launch(IntentSenderRequest.Builder(sender).build()) }, onLinked)
+    }
+    LifecycleResumeEffect(Unit) {
+        val job = scope.launch {
+            // The audio profiles come up a moment after the Bluetooth link, so a first miss is retried
+            for (attempt in 1..DETECT_ATTEMPTS) {
+                refresh()
+                if (buds != null || attempt == DETECT_ATTEMPTS) break
+                delay(DETECT_WAIT_MS)
+            }
+            // Android's start-from-background rule lets the sync start on connect only for linked buds
+            val found = buds
+            if (found != null && !linked && !askedToLink) {
+                askedToLink = true
+                link(found)
+            }
+        }
+        onPauseOrDispose { job.cancel() }
+    }
     val current = buds
     AssistChip(
         modifier = modifier,
@@ -69,7 +90,7 @@ fun BudsChip(modifier: Modifier = Modifier) {
                     refresh()
                     if (buds == null) showToast(context, R.string.connect_buds_first)
                 }
-                !linked -> linkBuds(context, current.address, { sender -> linkLauncher.launch(IntentSenderRequest.Builder(sender).build()) }, onLinked)
+                !linked -> link(current)
                 else -> scope.launch { refresh() }
             }
         },

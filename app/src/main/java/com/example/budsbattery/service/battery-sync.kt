@@ -27,18 +27,20 @@ import kotlinx.coroutines.sync.withLock
 
 private const val TAG = "BatterySync"
 
-// The buds push changes on their own; this pull is a safety net in case a push is missed
-private const val PULL_INTERVAL_MS = 60_000L
+// The buds push changes on their own; this pull is a safety net in case a push is missed. A request is a
+// few bytes on a link that is already open, so a short interval costs next to nothing
+private const val PULL_INTERVAL_MS = 20_000L
 
-// Wait before each reconnect: quick at first, then at most every 5 minutes
-private val RECONNECT_WAITS_MS = listOf(1_500L, 2_000L, 5_000L, 15_000L, 60_000L, 5 * 60_000L)
+// Wait before each reconnect: none at first. The buds are known to be connected while this runs,
+// so a dropped channel is retried within seconds; the old 5-minute cap froze values for minutes
+private val RECONNECT_WAITS_MS = listOf(0L, 1_000L, 2_000L, 5_000L, 15_000L)
 
 // A refused Message Stream usually means Google services hold it; stop trying after this many
 private const val MESSAGE_STREAM_MAX_REFUSALS = 3
 
 /**
- * Keeps battery values fresh until cancelled. Three routes run side by side; the one closest to the
- * buds wins and weaker ones are ignored from then on, so values never flip between routes.
+ * Keeps battery values fresh until cancelled. Three routes run side by side; once the buds answer directly
+ * the lagging broadcast is ignored, so values never flip back to older ones.
  *
  * @param context - app context
  * @param adapter - Bluetooth adapter of the phone
@@ -49,7 +51,7 @@ suspend fun runBatterySync(context: Context, adapter: BluetoothAdapter, address:
     coroutineScope {
         val publish = rankedPublisher(context)
         launch { syncOverMessageStream(adapter, address, publish) }
-        launch { syncOverVendorChannel(adapter, address, refreshes, publish) }
+        launch { syncOverVendorChannel(context, adapter, address, refreshes, publish) }
         launch { syncOverFastPair(context, adapter, refreshes, publish) }
         // Any route may give up (not offered, no permission); the sync still lives until the buds disconnect
         awaitCancellation()
@@ -88,6 +90,7 @@ private suspend fun syncOverMessageStream(adapter: BluetoothAdapter, address: St
 }
 
 private suspend fun syncOverVendorChannel(
+    context: Context,
     adapter: BluetoothAdapter,
     address: String,
     refreshes: Flow<Unit>,
@@ -102,7 +105,14 @@ private suspend fun syncOverVendorChannel(
     while (true) {
         delay(RECONNECT_WAITS_MS[failures.coerceAtMost(RECONNECT_WAITS_MS.lastIndex)])
         val socket = connectToBuds(adapter, address)
-        val heard = socket != null && runSessionWithTimeout(socket, requests) { publish(it, ReadSource.VENDOR_CHANNEL) }
+        val heard = socket != null && runSessionWithTimeout(
+            socket,
+            requests,
+            onPlacement = { inCase ->
+                Log.d(TAG, "Bud in case: $inCase")
+                publishPlacement(context, inCase)
+            },
+        ) { publish(it, ReadSource.VENDOR_CHANNEL) }
         failures = if (heard) 0 else failures + 1
     }
 }

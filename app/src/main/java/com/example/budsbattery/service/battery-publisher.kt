@@ -8,6 +8,7 @@ import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.readBatteryState
 import com.example.budsbattery.data.readLiveUpdate
+import com.example.budsbattery.data.saveBudInCase
 import com.example.budsbattery.data.saveReading
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
@@ -22,6 +23,17 @@ import com.example.budsbattery.ui.updateBatteryNotification
  */
 suspend fun publishReading(context: Context, reading: BatteryReading, source: ReadSource) {
     saveReading(context, reading, source, System.currentTimeMillis())
+    refreshSurfaces(context)
+}
+
+/**
+ * Saves whether a bud sits in the case, then refreshes every surface so the case appears or hides at once.
+ *
+ * @param context - app context
+ * @param budInCase - true while at least one bud sits in the case
+ */
+suspend fun publishPlacement(context: Context, budInCase: Boolean) {
+    saveBudInCase(context, budInCase)
     refreshSurfaces(context)
 }
 

@@ -21,7 +21,8 @@ class BudsProtocolTest {
 
     @Test
     fun `battery subscription has the documented bytes`() {
-        assertArrayEquals(hex("AA 09 00 00 05 02 00 02 00 09 01"), encodeBatterySubscription(seq = 0))
+        // 09 = subscribe, 01 = battery, 02 = earbuds status (in case / out of ear)
+        assertArrayEquals(hex("AA 0A 00 00 05 02 00 03 00 09 01 02"), encodeBatterySubscription(seq = 0))
     }
 
     @Test
@@ -54,8 +55,29 @@ class BudsProtocolTest {
     }
 
     @Test
-    fun `ignores pushes that are not battery`() {
-        val frame = hex("AA 0B 00 00 04 02 00 04 00 02 01 01 00")
+    fun `status request has the documented bytes`() {
+        assertArrayEquals(hex("AA 07 00 00 09 01 00 00 00"), encodeStatusRequest(seq = 0))
+    }
+
+    @Test
+    fun `status reply says a bud sits in the case`() {
+        // Left (01) = in case (00), right (02) = out of ear (01)
+        val frame = hex("AA 0D 00 00 09 81 00 06 00 00 02 01 00 02 01")
+
+        assertEquals(BatteryFrameResult.Placement(budInCase = true), parseBatteryFrame(frame))
+    }
+
+    @Test
+    fun `status push says both buds are out of the case`() {
+        // Left = out of ear (01), right = ready (03)
+        val frame = hex("AA 0D 00 00 04 02 00 06 00 02 02 01 01 02 03")
+
+        assertEquals(BatteryFrameResult.Placement(budInCase = false), parseBatteryFrame(frame))
+    }
+
+    @Test
+    fun `ignores pushes that are not battery or status`() {
+        val frame = hex("AA 0B 00 00 04 02 00 04 00 03 01 01 00")
 
         assertEquals(BatteryFrameResult.Ignored, parseBatteryFrame(frame))
     }

@@ -51,7 +51,7 @@ data class BudsView(
 
 /**
  * Turns the saved state into what the screen shows. Values from an earlier connection are never shown as live,
- * and the case shows only while connected with a bud charging in it.
+ * and the case shows only while connected with a bud in the case.
  *
  * @param state - saved values, connection flag and connection start
  * @param nowMillis - current time in epoch milliseconds
@@ -64,7 +64,7 @@ fun budsViewOf(state: BatteryState, nowMillis: Long): BudsView {
         snapshot == null -> emptyView(state.connected)
         // Buds and case change fast, so last connection's values are hidden until this one answers
         state.connected && !fresh -> emptyView(connected = true)
-        state.connected -> liveView(snapshot)
+        state.connected -> liveView(snapshot, state.budInCase)
         else -> pastView(snapshot, nowMillis)
     }
 }
@@ -79,7 +79,7 @@ private fun emptyView(connected: Boolean) = BudsView(
     sourceNote = null,
 )
 
-private fun liveView(snapshot: BatterySnapshot) = partsOf(snapshot, live = true).copy(
+private fun liveView(snapshot: BatterySnapshot, budInCase: Boolean?) = partsOf(snapshot, live = true, budInCase).copy(
     connected = true,
     status = "Connected",
     sourceNote = sourceNoteOf(snapshot.source),
@@ -89,10 +89,10 @@ private fun pastView(snapshot: BatterySnapshot, nowMillis: Long) = partsOf(snaps
     status = "Not connected${SEPARATOR}read ${formatAge(snapshot.savedAtMillis, nowMillis)}",
 )
 
-private fun partsOf(snapshot: BatterySnapshot, live: Boolean) = BudsView(
+private fun partsOf(snapshot: BatterySnapshot, live: Boolean, budInCase: Boolean? = null) = BudsView(
     left = snapshot.reading.left?.let { PartView(it, live) },
     right = snapshot.reading.right?.let { PartView(it, live) },
-    case = snapshot.reading.case?.takeIf { live && budInCase(snapshot.reading) }?.let { PartView(it, live) },
+    case = snapshot.reading.case?.takeIf { live && (budInCase ?: anyBudCharging(snapshot.reading)) }?.let { PartView(it, live) },
     connected = false,
     waiting = false,
     status = "",
@@ -100,8 +100,8 @@ private fun partsOf(snapshot: BatterySnapshot, live: Boolean) = BudsView(
 )
 
 // === NOTE: === The buds keep sending the case's last level after leaving it, so the case byte alone proves nothing.
-// A charging bud is the one signal that a bud sits in the case (AirPods rule)
-private fun budInCase(reading: BatteryReading): Boolean =
+// Their own in-case status decides; a charging bud is the fallback until it arrives (full buds stop charging)
+private fun anyBudCharging(reading: BatteryReading): Boolean =
     reading.left?.charging == true || reading.right?.charging == true
 
 private fun sourceNoteOf(source: ReadSource?): String? = when (source) {

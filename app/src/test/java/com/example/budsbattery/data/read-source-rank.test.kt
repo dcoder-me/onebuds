@@ -30,4 +30,20 @@ class ReadSourceRankTest {
         assertTrue(shouldAccept(setOf(ReadSource.MESSAGE_STREAM), ReadSource.MESSAGE_STREAM))
         assertTrue(shouldAccept(emptySet(), ReadSource.FAST_PAIR_ADVERT))
     }
+
+    @Test
+    fun `the message stream stays closed while the vendor channel is live`() {
+        assertFalse(routeNeeded(setOf(ReadSource.VENDOR_CHANNEL), ReadSource.MESSAGE_STREAM))
+    }
+
+    @Test
+    fun `the message stream opens once the vendor channel closes`() {
+        assertTrue(routeNeeded(emptySet(), ReadSource.MESSAGE_STREAM))
+    }
+
+    @Test
+    fun `the broadcast scan runs only while no direct route is live`() {
+        assertFalse(routeNeeded(setOf(ReadSource.MESSAGE_STREAM), ReadSource.FAST_PAIR_ADVERT))
+        assertTrue(routeNeeded(emptySet(), ReadSource.FAST_PAIR_ADVERT))
+    }
 }

@@ -4,9 +4,12 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import android.util.Log
 import com.example.budsbattery.data.BatteryReading
+import com.example.budsbattery.data.NoiseMode
 import com.example.budsbattery.protocol.BatteryFrameResult
 import com.example.budsbattery.protocol.encodeBatteryRequest
 import com.example.budsbattery.protocol.encodeBatterySubscription
+import com.example.budsbattery.protocol.encodeNoiseQuery
+import com.example.budsbattery.protocol.encodeNoiseSet
 import com.example.budsbattery.protocol.encodeStatusRequest
 import com.example.budsbattery.protocol.parseBatteryFrame
 import com.example.budsbattery.protocol.splitFrames
@@ -21,6 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,6 +43,7 @@ private const val BYTE_MASK = 0xFF
 private const val SUBSCRIBE_SEQ = 0
 private const val REQUEST_SEQ = 1
 private const val STATUS_SEQ = 2
+private const val NOISE_SEQ = 3
 private const val SEQ_MASK = 0xFF
 
 /**
@@ -67,20 +72,28 @@ private fun tryOpenBudsSocket(adapter: BluetoothAdapter, address: String, uuid: 
     null
 }
 
+/** What the buds report during a session, besides battery. */
+data class BudsReports(
+    val onPlacement: suspend (Boolean) -> Unit = {},
+    val onNoise: suspend (NoiseMode) -> Unit = {},
+)
+
 /**
- * Subscribes to battery and in-case pushes and asks for both once, then asks for battery again on each signal
- * and whenever a bud enters or leaves the case, reading every frame until the channel closes.
+ * Subscribes to battery, in-case and noise pushes and asks for each once, then asks for battery again on each
+ * signal and whenever a bud enters or leaves the case, reading every frame until the channel closes.
  *
  * @param socket - connected control channel
  * @param requests - each emission sends one more battery request (pull refresh while connected)
- * @param onPlacement - called with true while a bud sits in the case, false once none does
+ * @param noiseModes - each emission switches the buds to that noise mode
+ * @param reports - called with in-case and noise changes
  * @param onReading - called for each battery reading
  * @throws IOException when the buds drop the channel
  */
 suspend fun runBudsSession(
     socket: BluetoothSocket,
     requests: Flow<Unit> = emptyFlow(),
-    onPlacement: suspend (Boolean) -> Unit = {},
+    noiseModes: Flow<NoiseMode> = emptyFlow(),
+    reports: BudsReports = BudsReports(),
     onReading: suspend (BatteryReading) -> Unit,
 ) = coroutineScope {
     // A bud going in or out changes what the case reports, so its battery is asked for right away
@@ -99,20 +112,24 @@ suspend fun runBudsSession(
         output.write(encodeBatterySubscription(SUBSCRIBE_SEQ))
         output.write(encodeBatteryRequest(REQUEST_SEQ))
         output.write(encodeStatusRequest(STATUS_SEQ))
+        output.write(encodeNoiseQuery(NOISE_SEQ))
         output.flush()
-        var seq = STATUS_SEQ
-        merge(requests, placementChanges).collect {
+        var seq = NOISE_SEQ
+        val batteryFrames = merge(requests, placementChanges).map { { next: Int -> encodeBatteryRequest(next) } }
+        // The query after a switch reports the mode the buds really took, even if they refused the switch
+        val noiseFrames = noiseModes.map { mode -> { next: Int -> encodeNoiseSet(next, mode) + encodeNoiseQuery(next) } }
+        merge(batteryFrames, noiseFrames).collect { encode ->
             seq = (seq + 1) and SEQ_MASK
-            output.write(encodeBatteryRequest(seq))
+            output.write(encode(seq))
             output.flush()
         }
     }
     try {
-        val onFramePlacement: suspend (Boolean) -> Unit = { inCase ->
-            onPlacement(inCase)
+        val sessionReports = reports.copy(onPlacement = { inCase ->
+            reports.onPlacement(inCase)
             placementChanges.tryEmit(Unit)
-        }
-        withContext(Dispatchers.IO) { readFrames(socket.inputStream, onFramePlacement, onReading) }
+        })
+        withContext(Dispatchers.IO) { readFrames(socket.inputStream, sessionReports, onReading) }
     } finally {
         writer.cancel()
         closeOnCancel.cancel()
@@ -124,14 +141,16 @@ suspend fun runBudsSession(
  *
  * @param socket - connected control channel; always closed when this returns
  * @param requests - each emission sends one more battery request
- * @param onPlacement - called with true while a bud sits in the case, false once none does
+ * @param noiseModes - each emission switches the buds to that noise mode
+ * @param reports - called with in-case and noise changes
  * @param onReading - called for each battery reading
  * @returns true if the buds sent at least one reading
  */
 suspend fun runSessionWithTimeout(
     socket: BluetoothSocket,
     requests: Flow<Unit> = emptyFlow(),
-    onPlacement: suspend (Boolean) -> Unit = {},
+    noiseModes: Flow<NoiseMode> = emptyFlow(),
+    reports: BudsReports = BudsReports(),
     onReading: suspend (BatteryReading) -> Unit,
 ): Boolean =
     coroutineScope {
@@ -141,7 +160,7 @@ suspend fun runSessionWithTimeout(
             if (!heard.get()) socket.close()
         }
         try {
-            runBudsSession(socket, requests, onPlacement) { reading ->
+            runBudsSession(socket, requests, noiseModes, reports) { reading ->
                 heard.set(true)
                 onReading(reading)
             }
@@ -183,7 +202,7 @@ private fun openBudsSocket(adapter: BluetoothAdapter, address: String, uuid: UUI
 
 private suspend fun readFrames(
     input: InputStream,
-    onPlacement: suspend (Boolean) -> Unit,
+    reports: BudsReports,
     onReading: suspend (BatteryReading) -> Unit,
 ) {
     val chunk = ByteArray(READ_CHUNK_BYTES)
@@ -193,20 +212,21 @@ private suspend fun readFrames(
         if (count < 0) throw IOException("Buds closed the channel")
         val split = splitFrames(pending + chunk.copyOf(count))
         pending = split.leftover
-        for (frame in split.frames) handleFrame(frame, onPlacement, onReading)
+        for (frame in split.frames) handleFrame(frame, reports, onReading)
     }
 }
 
 // Raw bytes are logged so a bad frame can be checked by hand against the protocol
 private suspend fun handleFrame(
     frame: ByteArray,
-    onPlacement: suspend (Boolean) -> Unit,
+    reports: BudsReports,
     onReading: suspend (BatteryReading) -> Unit,
 ) {
     Log.d(TAG, "Frame: ${frame.toHex()}")
     when (val result = parseBatteryFrame(frame)) {
         is BatteryFrameResult.Reading -> onReading(result.reading)
-        is BatteryFrameResult.Placement -> onPlacement(result.budInCase)
+        is BatteryFrameResult.Placement -> reports.onPlacement(result.budInCase)
+        is BatteryFrameResult.Noise -> reports.onNoise(result.mode)
         is BatteryFrameResult.Rejected -> Log.w(TAG, "Rejected frame (${result.reason}): ${frame.toHex()}")
         BatteryFrameResult.Ignored -> Unit
     }

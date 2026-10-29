@@ -27,6 +27,7 @@ private val sourceKey = stringPreferencesKey("source")
 private val connectedKey = booleanPreferencesKey("connected")
 private val connectedAtKey = longPreferencesKey("connected_at")
 private val budInCaseKey = booleanPreferencesKey("bud_in_case")
+private val noiseModeKey = stringPreferencesKey("noise_mode")
 
 /**
  * Reads the last saved values and the connection flag.
@@ -49,6 +50,7 @@ private fun toBatteryState(prefs: Preferences): BatteryState = BatteryState(
     connected = prefs[connectedKey] ?: false,
     connectedAtMillis = prefs[connectedAtKey],
     budInCase = prefs[budInCaseKey],
+    noiseMode = prefs[noiseModeKey]?.let { name -> NoiseMode.entries.firstOrNull { it.name == name } },
 )
 
 private fun snapshotOf(prefs: Preferences): BatterySnapshot? = prefs[savedAtKey]?.let { savedAt ->
@@ -93,8 +95,9 @@ suspend fun saveReading(context: Context, reading: BatteryReading, source: ReadS
 suspend fun saveConnected(context: Context, connected: Boolean, nowMillis: Long = System.currentTimeMillis()) {
     context.batteryDataStore.edit { prefs ->
         prefs[connectedKey] = connected
-        // The last connection's in-case status says nothing about this one
+        // The last connection's in-case status and noise mode say nothing about this one
         prefs.remove(budInCaseKey)
+        prefs.remove(noiseModeKey)
         if (connected) prefs[connectedAtKey] = nowMillis
     }
 }
@@ -107,6 +110,16 @@ suspend fun saveConnected(context: Context, connected: Boolean, nowMillis: Long 
  */
 suspend fun saveBudInCase(context: Context, budInCase: Boolean) {
     context.batteryDataStore.edit { prefs -> prefs[budInCaseKey] = budInCase }
+}
+
+/**
+ * Stores the noise mode the buds report. Cleared on every connect and disconnect.
+ *
+ * @param context - app context used to open the DataStore file
+ * @param mode - mode the buds are in now
+ */
+suspend fun saveNoiseMode(context: Context, mode: NoiseMode) {
+    context.batteryDataStore.edit { prefs -> prefs[noiseModeKey] = mode.name }
 }
 
 private fun readPart(prefs: Preferences, keys: PartKeys): BatteryLevel? {

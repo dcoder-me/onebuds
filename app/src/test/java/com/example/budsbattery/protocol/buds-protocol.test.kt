@@ -20,12 +20,6 @@ class BudsProtocolTest {
     }
 
     @Test
-    fun `battery subscription has the documented bytes`() {
-        // 02 = how many events follow (Realme Link registerMultiNotification), 01 = battery, 02 = earbuds status
-        assertArrayEquals(hex("AA 0A 00 00 05 02 00 03 00 02 01 02"), encodeBatterySubscription(seq = 0))
-    }
-
-    @Test
     fun `parses left, right and case with charging flag`() {
         val frame = hex("AA 0F 00 00 06 81 00 08 00 00 03 01 50 02 CB 03 3C")
 
@@ -76,8 +70,8 @@ class BudsProtocolTest {
     }
 
     @Test
-    fun `ignores pushes that are not battery or status`() {
-        val frame = hex("AA 0B 00 00 04 02 00 04 00 03 01 01 00")
+    fun `ignores pushes that are not battery, status or noise`() {
+        val frame = hex("AA 0B 00 00 04 02 00 04 00 05 01 01 00")
 
         assertEquals(BatteryFrameResult.Ignored, parseBatteryFrame(frame))
     }

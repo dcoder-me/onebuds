@@ -2,6 +2,7 @@ package com.example.budsbattery.protocol
 
 import com.example.budsbattery.data.BatteryLevel
 import com.example.budsbattery.data.BatteryReading
+import com.example.budsbattery.data.NoiseMode
 
 // === NOTE: === Oppo-family frame layout (little-endian), checked against Gadgetbridge's Oppo code.
 // Frame: AA | LEB128 length | control (1) | 00 | command (2) | seq (1) | payload length (2) | payload
@@ -24,8 +25,9 @@ private const val COMMAND_STATUS_REQUEST = 0x0109
 private const val COMMAND_STATUS_REPLY = 0x8109
 private const val SUBSCRIPTION_BATTERY = 0x01
 private const val SUBSCRIPTION_STATUS = 0x02
+private const val SUBSCRIPTION_NOISE = 0x03
 
-private val SUBSCRIPTION_EVENTS = listOf(SUBSCRIPTION_BATTERY, SUBSCRIPTION_STATUS)
+private val SUBSCRIPTION_EVENTS = listOf(SUBSCRIPTION_BATTERY, SUBSCRIPTION_STATUS, SUBSCRIPTION_NOISE)
 
 // Earbuds status per side (Gadgetbridge EarbudsStatusValue): 00 in case, 01 out of ear, 03 ready
 private const val STATUS_IN_CASE = 0x00
@@ -54,6 +56,9 @@ sealed interface BatteryFrameResult {
 
     // Whether at least one bud sits in the case, as the buds themselves report it
     data class Placement(val budInCase: Boolean) : BatteryFrameResult
+
+    // The noise mode the buds are in now, from a reply or from a long press on a bud
+    data class Noise(val mode: NoiseMode) : BatteryFrameResult
     data class Rejected(val reason: String) : BatteryFrameResult
     data object Ignored : BatteryFrameResult
 }
@@ -131,16 +136,20 @@ fun parseBatteryFrame(frame: ByteArray): BatteryFrameResult {
     if (body[0].unsigned() and FRAGMENT_STATE_MASK != FRAGMENT_WHOLE) return rejected("Fragment of a split message")
     if (body[1].unsigned() != HEADER_RESERVED) return rejected("Unexpected header 0x%04X".format(readShortLe(body, 0)))
     val command = readShortLe(body, 2)
-    if (command !in setOf(COMMAND_BATTERY_REPLY, COMMAND_SUBSCRIPTION_PUSH, COMMAND_STATUS_REPLY)) return BatteryFrameResult.Ignored
+    if (command !in setOf(COMMAND_BATTERY_REPLY, COMMAND_SUBSCRIPTION_PUSH, COMMAND_STATUS_REPLY, COMMAND_NOISE_REPLY)) {
+        return BatteryFrameResult.Ignored
+    }
     if (readShortLe(body, 5) != body.size - HEADER_BYTES) return rejected("Payload length mismatch")
 
     val payload = body.copyOfRange(HEADER_BYTES, body.size)
     // A push starts with its subscription type instead of a status byte; the rest has the reply's layout
     return when {
         command == COMMAND_STATUS_REPLY -> parsePlacement(payload)
+        command == COMMAND_NOISE_REPLY -> parseNoiseReply(payload)
         command == COMMAND_BATTERY_REPLY -> parseBatteryPayload(payload)
         payload.firstOrNull()?.unsigned() == SUBSCRIPTION_BATTERY -> parseBatteryPairs(payload)
         payload.firstOrNull()?.unsigned() == SUBSCRIPTION_STATUS -> parsePlacement(payload)
+        payload.firstOrNull()?.unsigned() == SUBSCRIPTION_NOISE -> parseNoisePush(payload)
         else -> BatteryFrameResult.Ignored
     }
 }
@@ -182,7 +191,7 @@ fun encodeLeb128(value: Int): ByteArray {
     return bytes.toByteArray()
 }
 
-private fun encodeFrame(command: Int, seq: Int, payload: ByteArray): ByteArray {
+internal fun encodeFrame(command: Int, seq: Int, payload: ByteArray): ByteArray {
     val header = byteArrayOf(0x00, 0x00) + shortLe(command) + byteArrayOf(seq.toByte()) + shortLe(payload.size)
     val body = header + payload
     return byteArrayOf(PREAMBLE) + encodeLeb128(body.size) + body
@@ -240,6 +249,6 @@ private fun shortLe(value: Int): ByteArray = byteArrayOf(
     ((value shr SHORT_BYTE_BITS) and BYTE_MASK).toByte(),
 )
 
-private fun Byte.unsigned(): Int = toInt() and BYTE_MASK
+internal fun Byte.unsigned(): Int = toInt() and BYTE_MASK
 
-private fun rejected(reason: String): BatteryFrameResult = BatteryFrameResult.Rejected(reason)
+internal fun rejected(reason: String): BatteryFrameResult = BatteryFrameResult.Rejected(reason)

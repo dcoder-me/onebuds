@@ -30,11 +30,12 @@ data class BatterySnapshot(
     val source: ReadSource? = null,
 )
 
-// Last saved values, whether the buds are connected, when this connection began, and whether the
-// buds report a bud in the case (null until they say so during this connection).
+// Last saved values, whether the buds are connected, when this connection began, whether the
+// buds report a bud in the case, and their noise mode (both null until the buds say so during this connection).
 data class BatteryState(
     val snapshot: BatterySnapshot?,
     val connected: Boolean,
     val connectedAtMillis: Long? = null,
     val budInCase: Boolean? = null,
+    val noiseMode: NoiseMode? = null,
 )

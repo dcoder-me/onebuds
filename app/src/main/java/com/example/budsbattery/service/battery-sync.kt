@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import com.example.budsbattery.bt.BudsReports
 import com.example.budsbattery.bt.connectMessageStream
 import com.example.budsbattery.bt.connectToBuds
 import com.example.budsbattery.bt.fastPairBatteryFlow
@@ -14,6 +15,7 @@ import com.example.budsbattery.bt.runSessionWithTimeout
 import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.routeNeeded
+import com.example.budsbattery.data.saveNoiseMode
 import com.example.budsbattery.data.shouldAccept
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.awaitCancellation
@@ -120,18 +122,23 @@ private suspend fun syncOverVendorChannel(
         return
     }
     val requests = merge(refreshes, ticker(PULL_INTERVAL_MS))
+    val reports = BudsReports(
+        onPlacement = { inCase ->
+            Log.d(TAG, "Bud in case: $inCase")
+            publishPlacement(context, inCase)
+        },
+        onNoise = { mode ->
+            Log.d(TAG, "Noise mode: $mode")
+            saveNoiseMode(context, mode)
+        },
+    )
     var failures = 0
     while (true) {
         delay(RECONNECT_WAITS_MS[failures.coerceAtMost(RECONNECT_WAITS_MS.lastIndex)])
         val socket = connectToBuds(adapter, address)
-        val heard = socket != null && runSessionWithTimeout(
-            socket,
-            requests,
-            onPlacement = { inCase ->
-                Log.d(TAG, "Bud in case: $inCase")
-                publishPlacement(context, inCase)
-            },
-        ) { routes.publish(it, ReadSource.VENDOR_CHANNEL) }
+        val heard = socket != null && runSessionWithTimeout(socket, requests, noiseModeRequests, reports) {
+            routes.publish(it, ReadSource.VENDOR_CHANNEL)
+        }
         routes.closed(ReadSource.VENDOR_CHANNEL)
         failures = if (heard) 0 else failures + 1
     }

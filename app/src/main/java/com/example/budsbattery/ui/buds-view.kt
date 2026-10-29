@@ -1,6 +1,7 @@
 package com.example.budsbattery.ui
 
 import com.example.budsbattery.data.BatteryLevel
+import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.BatterySnapshot
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.ReadSource
@@ -50,7 +51,7 @@ data class BudsView(
 
 /**
  * Turns the saved state into what the screen shows. Values from an earlier connection are never shown as live,
- * and the case shows only when the latest reading has it.
+ * and the case shows only while connected with a bud charging in it.
  *
  * @param state - saved values, connection flag and connection start
  * @param nowMillis - current time in epoch milliseconds
@@ -91,12 +92,17 @@ private fun pastView(snapshot: BatterySnapshot, nowMillis: Long) = partsOf(snaps
 private fun partsOf(snapshot: BatterySnapshot, live: Boolean) = BudsView(
     left = snapshot.reading.left?.let { PartView(it, live) },
     right = snapshot.reading.right?.let { PartView(it, live) },
-    case = snapshot.reading.case?.let { PartView(it, live) },
+    case = snapshot.reading.case?.takeIf { live && budInCase(snapshot.reading) }?.let { PartView(it, live) },
     connected = false,
     waiting = false,
     status = "",
     sourceNote = null,
 )
+
+// === NOTE: === The buds keep sending the case's last level after leaving it, so the case byte alone proves nothing.
+// A charging bud is the one signal that a bud sits in the case (AirPods rule)
+private fun budInCase(reading: BatteryReading): Boolean =
+    reading.left?.charging == true || reading.right?.charging == true
 
 private fun sourceNoteOf(source: ReadSource?): String? = when (source) {
     ReadSource.MESSAGE_STREAM -> "Live from the buds"

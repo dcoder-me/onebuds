@@ -15,7 +15,9 @@ private const val MINUTE_MS = 60_000L
 private const val HOUR_MS = 60 * MINUTE_MS
 private const val MODEL = "Realme Buds T310"
 
-private val reading = BatteryReading(BatteryLevel(80, false), BatteryLevel(75, false), BatteryLevel(60, false))
+// A charging bud means it sits in the case, so the case is shown
+private val reading = BatteryReading(BatteryLevel(80, true), BatteryLevel(75, false), BatteryLevel(60, false))
+private val budsOut = BatteryReading(BatteryLevel(80, false), BatteryLevel(75, false), BatteryLevel(60, false))
 
 private fun stateOf(savedAt: Long, connected: Boolean, value: BatteryReading = reading, connectedAt: Long = NOW_MS - MINUTE_MS) =
     BatteryState(BatterySnapshot(value, savedAt), connected, connectedAt)
@@ -40,18 +42,33 @@ class BudsViewTest {
         assertTrue(view.left!!.live && view.right!!.live && view.case!!.live)
         assertEquals("Connected", view.status)
         assertEquals("75%", formatChipText(view))
-        assertEquals("L 80 · R 75 · Case 60", formatTileSubtitle(state, NOW_MS))
+        assertEquals("L 80 ⚡ · R 75 · Case 60", formatTileSubtitle(state, NOW_MS))
     }
 
     @Test
     fun `every surface drops the case together once the buds leave it`() {
-        val state = stateOf(savedAt = NOW_MS, connected = true, value = reading.copy(case = null))
+        val state = stateOf(savedAt = NOW_MS, connected = true, value = budsOut.copy(case = null))
         val view = budsViewOf(state, NOW_MS)
 
         assertNull(view.case)
         assertEquals(BudsShape.TWO_BUDS, view.shape)
         assertEquals("L 80 · R 75", formatTileSubtitle(state, NOW_MS))
         assertEquals("Connected", liveUpdateTextOf(view, MODEL).text)
+    }
+
+    @Test
+    fun `a stale case value is hidden while both buds are out of the case`() {
+        val state = stateOf(savedAt = NOW_MS, connected = true, value = budsOut)
+        val view = budsViewOf(state, NOW_MS)
+
+        assertNull(view.case)
+        assertEquals("L 80 · R 75", formatTileSubtitle(state, NOW_MS))
+        assertEquals("Connected", liveUpdateTextOf(view, MODEL).text)
+    }
+
+    @Test
+    fun `the case is never shown once the buds disconnect`() {
+        assertNull(budsViewOf(stateOf(NOW_MS, connected = false), NOW_MS).case)
     }
 
     @Test

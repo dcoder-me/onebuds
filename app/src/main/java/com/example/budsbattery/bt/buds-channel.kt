@@ -55,9 +55,10 @@ private const val SEQ_MASK = 0xFF
  */
 suspend fun connectToBuds(adapter: BluetoothAdapter, address: String): BluetoothSocket? =
     // Connecting blocks for seconds; off the main thread or the screen freezes
-    withContext(Dispatchers.IO) {
-        BUDS_CHANNEL_UUIDS.firstNotNullOfOrNull { uuid -> tryOpenBudsSocket(adapter, address, uuid) }
-    }
+    openUnlessCancelled(
+        open = { BUDS_CHANNEL_UUIDS.firstNotNullOfOrNull { uuid -> tryOpenBudsSocket(adapter, address, uuid) } },
+        close = { it.close() },
+    )
 
 private fun tryOpenBudsSocket(adapter: BluetoothAdapter, address: String, uuid: UUID): BluetoothSocket? = try {
     openBudsSocket(adapter, address, uuid).also { Log.d(TAG, "Connected on $uuid") }

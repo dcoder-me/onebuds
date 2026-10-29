@@ -29,26 +29,28 @@ private const val BYTE_MASK = 0xFF
  * @returns a connected socket, or null if the buds refused (for example, Google services already hold it)
  */
 suspend fun connectMessageStream(adapter: BluetoothAdapter, address: String): BluetoothSocket? =
-    withContext(Dispatchers.IO) {
-        val socket = try {
-            adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(MESSAGE_STREAM_UUID)
-        } catch (error: SecurityException) {
-            Log.w(TAG, "Bluetooth permission missing", error)
-            return@withContext null
-        } catch (error: IOException) {
-            Log.w(TAG, "Couldn't create the socket", error)
-            return@withContext null
-        }
-        try {
-            socket.connect()
-            Log.d(TAG, "Connected")
-            socket
-        } catch (error: IOException) {
-            Log.w(TAG, "Buds refused the Message Stream", error)
-            socket.close()
-            null
-        }
+    openUnlessCancelled(open = { openMessageStream(adapter, address) }, close = { it.close() })
+
+private fun openMessageStream(adapter: BluetoothAdapter, address: String): BluetoothSocket? {
+    val socket = try {
+        adapter.getRemoteDevice(address).createRfcommSocketToServiceRecord(MESSAGE_STREAM_UUID)
+    } catch (error: SecurityException) {
+        Log.w(TAG, "Bluetooth permission missing", error)
+        return null
+    } catch (error: IOException) {
+        Log.w(TAG, "Couldn't create the socket", error)
+        return null
     }
+    return try {
+        socket.connect()
+        Log.d(TAG, "Connected")
+        socket
+    } catch (error: IOException) {
+        Log.w(TAG, "Buds refused the Message Stream", error)
+        socket.close()
+        null
+    }
+}
 
 /**
  * Reads messages until the buds close the stream; the buds send battery on open and on every change.

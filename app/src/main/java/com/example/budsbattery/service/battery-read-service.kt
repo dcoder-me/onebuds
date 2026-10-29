@@ -16,12 +16,12 @@ import com.example.budsbattery.bt.findConnectedBuds
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.batteryStateFlow
 import com.example.budsbattery.data.isSelectedDevice
+import com.example.budsbattery.data.liveUpdateFlow
 import com.example.budsbattery.data.saveConnected
 import com.example.budsbattery.data.saveSelectedAddress
 import com.example.budsbattery.ui.BATTERY_NOTIFICATION_ID
 import com.example.budsbattery.ui.buildBatteryNotification
 import com.example.budsbattery.ui.createBatteryChannel
-import com.example.budsbattery.ui.showPopupOnConnect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,9 +40,6 @@ private const val DETECT_WAIT_MS = 2_000L
 /** Intent action that asks a running sync for fresh values now. */
 const val ACTION_REFRESH = "com.example.budsbattery.action.REFRESH"
 
-/** Intent extra: the buds just connected, so pop the card up once the sync starts. */
-const val EXTRA_ANNOUNCE = "com.example.budsbattery.extra.ANNOUNCE"
-
 /**
  * Keeps battery in sync for as long as the buds stay connected, under an ongoing notification.
  * Ends when Android reports the buds disconnected.
@@ -56,6 +53,10 @@ class BatteryReadService : Service() {
     // Kept current so a repeat start (tile tap, card open) re-posts real values, not "Reading battery…"
     @Volatile
     private var latestState = BatteryState(snapshot = null, connected = true)
+
+    // startForeground can't suspend, so the switch is kept current here
+    @Volatile
+    private var liveUpdate = true
 
     // Stops the sync the moment the buds' Bluetooth link drops
     private val disconnectReceiver = object : BroadcastReceiver() {
@@ -72,6 +73,7 @@ class BatteryReadService : Service() {
         // ACL_DISCONNECTED is a protected broadcast only the system can send, so exporting is safe
         registerReceiver(disconnectReceiver, IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED), RECEIVER_EXPORTED)
         scope.launch { batteryStateFlow(applicationContext).collect { latestState = it } }
+        scope.launch { liveUpdateFlow(applicationContext).collect { liveUpdate = it } }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,8 +83,7 @@ class BatteryReadService : Service() {
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_REFRESH) refreshes.tryEmit(Unit)
-        val announce = intent?.getBooleanExtra(EXTRA_ANNOUNCE, false) == true
-        if (syncing?.isActive != true) syncing = scope.launch { syncWhileConnected(announce) }
+        if (syncing?.isActive != true) syncing = scope.launch { syncWhileConnected() }
         return START_NOT_STICKY
     }
 
@@ -94,7 +95,7 @@ class BatteryReadService : Service() {
 
     // A permission revoked after the start check makes startForeground throw; stop quietly instead
     private fun enterForeground(): Boolean = try {
-        startForeground(BATTERY_NOTIFICATION_ID, buildBatteryNotification(this, foregroundState()), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        startForeground(BATTERY_NOTIFICATION_ID, buildBatteryNotification(this, foregroundState(), liveUpdate), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         true
     } catch (error: SecurityException) {
         Log.w(TAG, "Not allowed to run in the foreground", error)
@@ -118,7 +119,7 @@ class BatteryReadService : Service() {
         return null
     }
 
-    private suspend fun syncWhileConnected(announce: Boolean) {
+    private suspend fun syncWhileConnected() {
         val adapter = getSystemService(BluetoothManager::class.java)?.adapter
         val buds = adapter?.let { awaitConnectedBuds(it) }
         if (adapter == null || buds == null) {
@@ -130,8 +131,6 @@ class BatteryReadService : Service() {
         saveSelectedAddress(this, buds.address)
         saveConnected(this, true)
         refreshSurfaces(applicationContext)
-        // Pops up right away and fills in as values arrive, like the AirPods card
-        if (announce) showPopupOnConnect(applicationContext)
         try {
             runBatterySync(applicationContext, adapter, buds.address, refreshes)
         } finally {

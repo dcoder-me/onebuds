@@ -16,6 +16,7 @@ private val ACCEPTED_HEADER_MARKERS = setOf(0x0000, 0x0004)
 private const val COMMAND_BATTERY_REQUEST = 0x0106
 private const val COMMAND_BATTERY_REPLY = 0x8106
 private const val COMMAND_SUBSCRIPTION_SET = 0x0205
+private const val COMMAND_SUBSCRIPTION_PUSH = 0x0204
 private const val SUBSCRIPTION_MARKER = 0x09
 private const val SUBSCRIPTION_BATTERY = 0x01
 
@@ -106,10 +107,17 @@ fun parseBatteryFrame(frame: ByteArray): BatteryFrameResult {
 
     val marker = readShortLe(body, 0)
     if (marker !in ACCEPTED_HEADER_MARKERS) return rejected("Unexpected header 0x%04X".format(marker))
-    if (readShortLe(body, 2) != COMMAND_BATTERY_REPLY) return BatteryFrameResult.Ignored
+    val command = readShortLe(body, 2)
+    if (command != COMMAND_BATTERY_REPLY && command != COMMAND_SUBSCRIPTION_PUSH) return BatteryFrameResult.Ignored
     if (readShortLe(body, 5) != body.size - HEADER_BYTES) return rejected("Payload length mismatch")
 
-    return parseBatteryPayload(body.copyOfRange(HEADER_BYTES, body.size))
+    val payload = body.copyOfRange(HEADER_BYTES, body.size)
+    // A push starts with its subscription type instead of a status byte; only battery pushes matter here
+    if (command == COMMAND_SUBSCRIPTION_PUSH) {
+        if (payload.firstOrNull()?.unsigned() != SUBSCRIPTION_BATTERY) return BatteryFrameResult.Ignored
+        return parseBatteryPairs(payload)
+    }
+    return parseBatteryPayload(payload)
 }
 
 /**
@@ -158,6 +166,12 @@ private fun encodeFrame(command: Int, seq: Int, payload: ByteArray): ByteArray {
 private fun parseBatteryPayload(payload: ByteArray): BatteryFrameResult {
     if (payload.size < PAYLOAD_PREFIX_BYTES) return rejected("Battery payload too short")
     if (payload[0].unsigned() != PAYLOAD_STATUS_OK) return rejected("Buds reported a non-zero status")
+    return parseBatteryPairs(payload)
+}
+
+// Same layout after the first byte in a reply and a push: count, then index/level pairs (Gadgetbridge parseBattery)
+private fun parseBatteryPairs(payload: ByteArray): BatteryFrameResult {
+    if (payload.size < PAYLOAD_PREFIX_BYTES) return rejected("Battery payload too short")
     if ((payload.size - PAYLOAD_PREFIX_BYTES) % PAIR_BYTES != 0) return rejected("Battery pairs cut short")
 
     var reading = BatteryReading(left = null, right = null, case = null)

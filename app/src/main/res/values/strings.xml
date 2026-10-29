@@ -13,36 +13,23 @@
     <string name="part_case">Case</string>
     <string name="charging">Charging</string>
     <string name="unknown_level">—</string>
-    <string name="read_now">Read now</string>
-    <string name="reading">Reading…</string>
 
-    <string name="setup_title">Setup</string>
-    <string name="step_permissions_title">Allow permissions</string>
-    <string name="step_permissions_body">Bluetooth and nearby devices to read the buds, notifications to show battery.</string>
-    <string name="step_buds_title">Your buds</string>
-    <string name="step_buds_body">Connect your buds to the phone, then tap Detect.</string>
-    <string name="step_buds_found">%1$s · connected. Link it so battery reads by itself.</string>
-    <string name="step_buds_linked">%1$s · auto-read on</string>
-    <string name="step_tile_title">Add Quick Settings tile</string>
-    <string name="step_tile_body">See battery from the pull-down panel.</string>
-    <string name="step_pin_title">Pin to top</string>
-    <string name="step_pin_body">Allow Live Updates so battery stays at the top with a status-bar chip.</string>
-    <string name="step_pin_done">Live Updates allowed.</string>
-    <string name="step_popup_title">Pop up on connect</string>
-    <string name="step_popup_body">Allow "Display over other apps" so the battery card slides up when the buds connect.</string>
-    <string name="step_popup_done">Card pops up when the buds connect.</string>
+    <string name="permissions_title">Allow permissions</string>
+    <string name="permissions_body">Bluetooth to read the buds, notifications to show battery.</string>
+    <string name="chip_detect">Detect buds</string>
+    <string name="chip_link">Link %1$s</string>
+    <string name="chip_linked">✓ %1$s</string>
+    <string name="live_update_title">Live Update</string>
+    <string name="live_update_on">Battery pinned at the top with a status-bar pill.</string>
+    <string name="live_update_off">Plain notification while the buds are connected.</string>
+    <string name="live_update_blocked">Allow Live Updates for this app in Settings.</string>
     <string name="action_allow">Allow</string>
-    <string name="action_detect">Detect</string>
-    <string name="action_link">Link</string>
-    <string name="action_add">Add</string>
     <string name="show_app_icon">Show app icon</string>
     <string name="show_app_icon_body">Off hides it from the home screen. Long-press the tile to come back here.</string>
 
     <string name="connect_buds_first">Connect your buds first</string>
     <string name="allow_permissions_first">Allow permissions first</string>
     <string name="allow_in_settings">Allow Bluetooth in Settings</string>
-    <string name="add_tile_failed">Couldn\'t add tile. Try again.</string>
-    <string name="tile_added">Tile added</string>
-    <string name="auto_read_failed">Auto-read not linked. Read now still works.</string>
+    <string name="auto_read_failed">Couldn\'t link buds. Try again.</string>
 
 </resources>

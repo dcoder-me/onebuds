@@ -7,6 +7,7 @@ import androidx.glance.appwidget.updateAll
 import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.ReadSource
 import com.example.budsbattery.data.readBatteryState
+import com.example.budsbattery.data.readLiveUpdate
 import com.example.budsbattery.data.saveReading
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
@@ -25,7 +26,7 @@ suspend fun publishReading(context: Context, reading: BatteryReading, source: Re
 }
 
 /**
- * Pushes the saved state to the tile, the widget and, while connected, the notification.
+ * Pushes the saved state and the Live Update switch to the tile, the widget and, while connected, the notification.
  *
  * @param context - app context
  */
@@ -33,5 +34,5 @@ suspend fun refreshSurfaces(context: Context) {
     val state = readBatteryState(context)
     TileService.requestListeningState(context, ComponentName(context, BudsTileService::class.java))
     BudsWidget().updateAll(context)
-    if (state.connected) updateBatteryNotification(context, state)
+    if (state.connected) updateBatteryNotification(context, state, readLiveUpdate(context))
 }

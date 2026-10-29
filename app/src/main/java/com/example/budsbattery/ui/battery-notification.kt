@@ -42,9 +42,10 @@ fun createBatteryChannel(context: Context) {
  * Android or the phone maker may decline; it then stays a normal pinned notification.
  * @param context - app context
  * @param state - saved values and connection flag
+ * @param liveUpdate - the app's Live Update switch; off leaves a plain ongoing notification
  * @returns the notification to post or hand to startForeground
  */
-fun buildBatteryNotification(context: Context, state: BatteryState): Notification {
+fun buildBatteryNotification(context: Context, state: BatteryState, liveUpdate: Boolean): Notification {
     val view = budsViewOf(state, System.currentTimeMillis())
     val modelName = context.getString(R.string.app_subtitle)
     val live = liveUpdateTextOf(view, modelName)
@@ -61,7 +62,7 @@ fun buildBatteryNotification(context: Context, state: BatteryState): Notificatio
         .setOnlyAlertOnce(true)
         .setShowWhen(false)
         .setCategory(NotificationCompat.CATEGORY_STATUS)
-        .setRequestPromotedOngoing(true)
+        .setRequestPromotedOngoing(liveUpdate)
     live.chip?.let(builder::setShortCriticalText)
     return builder.build()
 }
@@ -71,8 +72,9 @@ fun buildBatteryNotification(context: Context, state: BatteryState): Notificatio
  *
  * @param context - app context
  * @param state - saved values and connection flag
+ * @param liveUpdate - the app's Live Update switch
  */
-fun updateBatteryNotification(context: Context, state: BatteryState) {
+fun updateBatteryNotification(context: Context, state: BatteryState, liveUpdate: Boolean) {
     context.getSystemService(NotificationManager::class.java)
-        .notify(BATTERY_NOTIFICATION_ID, buildBatteryNotification(context, state))
+        .notify(BATTERY_NOTIFICATION_ID, buildBatteryNotification(context, state, liveUpdate))
 }

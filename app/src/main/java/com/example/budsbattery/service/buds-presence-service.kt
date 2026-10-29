@@ -19,7 +19,7 @@ class BudsPresenceService : CompanionDeviceService() {
     // Android 16 sends this instead of the two callbacks below
     override fun onDevicePresenceEvent(event: DevicePresenceEvent) {
         when (event.event) {
-            DevicePresenceEvent.EVENT_BT_CONNECTED -> startBatteryRead(this, announce = true)
+            DevicePresenceEvent.EVENT_BT_CONNECTED -> startBatteryRead(this)
             DevicePresenceEvent.EVENT_BT_DISCONNECTED -> stopBatteryRead(this)
         }
     }
@@ -43,7 +43,7 @@ class BudsPresenceService : CompanionDeviceService() {
         scope.launch {
             val selected = readSelectedAddress(this@BudsPresenceService)
             if (!isSelectedDevice(selected, associationAddress(info))) return@launch
-            if (connected) startBatteryRead(this@BudsPresenceService, announce = true) else stopBatteryRead(this@BudsPresenceService)
+            if (connected) startBatteryRead(this@BudsPresenceService) else stopBatteryRead(this@BudsPresenceService)
         }
     }
 }

@@ -23,9 +23,8 @@ fun hasBluetoothPermission(context: Context): Boolean =
  *
  * @param context - app context
  * @param refresh - true to ask for fresh values right away
- * @param announce - true when the buds just connected, so the card pops up
  */
-fun startBatteryRead(context: Context, refresh: Boolean = false, announce: Boolean = false) {
+fun startBatteryRead(context: Context, refresh: Boolean = false) {
     // === NOTE: === Starting a connectedDevice service without this permission crashes the app on Android 14+
     if (!hasBluetoothPermission(context)) {
         Log.w(TAG, "Bluetooth permission missing, read skipped")
@@ -33,7 +32,6 @@ fun startBatteryRead(context: Context, refresh: Boolean = false, announce: Boole
     }
     val intent = Intent(context, BatteryReadService::class.java)
     if (refresh) intent.action = ACTION_REFRESH
-    intent.putExtra(EXTRA_ANNOUNCE, announce)
     try {
         context.startForegroundService(intent)
     } catch (error: ForegroundServiceStartNotAllowedException) {

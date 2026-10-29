@@ -41,6 +41,26 @@ class BudsProtocolTest {
     }
 
     @Test
+    fun `parses a battery push the buds send on their own`() {
+        // Command 0x0204, payload: type 01 (battery) | count | index/level pairs
+        val frame = hex("AA 0F 00 00 04 02 00 08 00 01 03 01 50 02 CB 03 3C")
+
+        assertEquals(
+            BatteryFrameResult.Reading(
+                BatteryReading(BatteryLevel(80, false), BatteryLevel(75, true), BatteryLevel(60, false)),
+            ),
+            parseBatteryFrame(frame),
+        )
+    }
+
+    @Test
+    fun `ignores pushes that are not battery`() {
+        val frame = hex("AA 0B 00 00 04 02 00 04 00 02 01 01 00")
+
+        assertEquals(BatteryFrameResult.Ignored, parseBatteryFrame(frame))
+    }
+
+    @Test
     fun `accepts the realme header marker 0x0004`() {
         val frame = hex("AA 0F 04 00 06 81 00 08 00 00 03 01 50 02 CB 03 3C")
 

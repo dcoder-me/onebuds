@@ -4,8 +4,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -61,8 +59,6 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val TAG = "BudsPopup"
-private const val EXTRA_AUTO = "com.example.budsbattery.extra.AUTO"
 private const val AUTO_CLOSE_MS = 6_000L
 private const val SLIDE_MS = 350
 private const val CLOCK_TICK_MS = 30_000L
@@ -77,7 +73,7 @@ private val HANDLE_HEIGHT = 4.dp
 private val SWIPE_CLOSE_DISTANCE = 72.dp
 
 /**
- * AirPods-style card that slides up from the bottom. Opened from the tile, the notification, or on connect.
+ * AirPods-style card that slides up from the bottom. Opened from the tile or the notification.
  * No backdrop and no buttons: swipe it down or tap outside to close; it hides by itself after a few seconds.
  */
 class BudsPopupActivity : ComponentActivity() {
@@ -87,8 +83,8 @@ class BudsPopupActivity : ComponentActivity() {
         // The card animates itself; skip the window's own open and close animations
         overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
         overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
-        // Opened by hand: ask for fresh values now (also restarts a sync that died)
-        if (!intent.getBooleanExtra(EXTRA_AUTO, false)) startBatteryRead(applicationContext, refresh = true)
+        // Ask for fresh values now (also restarts a sync that died)
+        startBatteryRead(applicationContext, refresh = true)
         setContent {
             BudsTheme { PopupScreen(onClosed = ::finish) }
         }
@@ -108,34 +104,6 @@ fun budsPopupIntent(context: Context): PendingIntent = PendingIntent.getActivity
     PendingIntent.FLAG_IMMUTABLE,
 )
 
-/**
- * Tells whether the card may pop up by itself when the buds connect.
- *
- * @param context - any context
- * @returns true when "Display over other apps" is allowed
- */
-fun canPopUpOnConnect(context: Context): Boolean = Settings.canDrawOverlays(context)
-
-/**
- * Pops the card up by itself, like the AirPods case-open card. Closes after a few seconds.
- *
- * @description Android blocks activity starts from the background unless "Display over other apps" is allowed.
- * @param context - service context
- */
-fun showPopupOnConnect(context: Context) {
-    if (!canPopUpOnConnect(context)) {
-        Log.d(TAG, "Display over other apps not allowed; no pop-up")
-        return
-    }
-    val intent = Intent(context, BudsPopupActivity::class.java)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        .putExtra(EXTRA_AUTO, true)
-    try {
-        context.startActivity(intent)
-    } catch (error: RuntimeException) {
-        Log.w(TAG, "Android blocked the pop-up", error)
-    }
-}
 
 @Composable
 private fun PopupScreen(onClosed: () -> Unit) {

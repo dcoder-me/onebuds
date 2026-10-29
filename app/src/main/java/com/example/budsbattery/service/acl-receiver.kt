@@ -28,7 +28,7 @@ class AclReceiver : BroadcastReceiver() {
         val selected = readSelectedAddress(context)
         if (!isSelectedDevice(selected, address)) return
         when (action) {
-            BluetoothDevice.ACTION_ACL_CONNECTED -> startBatteryRead(context, announce = true)
+            BluetoothDevice.ACTION_ACL_CONNECTED -> startBatteryRead(context)
             BluetoothDevice.ACTION_ACL_DISCONNECTED -> stopBatteryRead(context)
         }
     }

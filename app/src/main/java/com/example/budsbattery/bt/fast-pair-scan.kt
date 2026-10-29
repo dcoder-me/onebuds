@@ -15,9 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TAG = "FastPairScan"
 private val FAST_PAIR_SERVICE: ParcelUuid = ParcelUuid.fromString("0000fe2c-0000-1000-8000-00805f9b34fb")
@@ -25,30 +23,6 @@ private val FAST_PAIR_SERVICE: ParcelUuid = ParcelUuid.fromString("0000fe2c-0000
 // === NOTE: === BLE adverts use random addresses, so they can't be matched to the buds' MAC; a weak
 // signal floor keeps a neighbour's buds across the room from being read instead of ours
 private const val MIN_RSSI = -70
-
-/** What a Fast Pair scan found. sawFastPair tells "no adverts at all" apart from "adverts without battery". */
-data class FastPairScanResult(val reading: BatteryReading?, val sawFastPair: Boolean)
-
-/**
- * Listens for the Fast Pair battery broadcast that drives the system popup.
- *
- * @param adapter - Bluetooth adapter of the phone
- * @param timeoutMs - how long to listen
- * @returns the first nearby battery reading, and whether any Fast Pair advert was seen
- */
-suspend fun scanFastPairBattery(adapter: BluetoothAdapter, timeoutMs: Long): FastPairScanResult {
-    val scanner = adapter.bluetoothLeScanner ?: return FastPairScanResult(null, sawFastPair = false)
-    var sawFastPair = false
-    val reading = withTimeoutOrNull(timeoutMs) {
-        fastPairAdverts(scanner, ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .firstOrNull { result ->
-                sawFastPair = true
-                result.rssi >= MIN_RSSI && batteryOf(result) != null
-            }
-            ?.let(::batteryOf)
-    }
-    return FastPairScanResult(reading, sawFastPair)
-}
 
 /**
  * Listens to the Fast Pair battery broadcast for as long as it is collected, at low power.

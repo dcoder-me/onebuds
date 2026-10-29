@@ -46,3 +46,12 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+// Every debug build lands on the Desktop, so the APK is always one tap from the phone
+val copyApkToDesktop by tasks.registering(Copy::class) {
+    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
+    into(File(System.getProperty("user.home"), "Desktop"))
+    rename { "buds-battery.apk" }
+}
+
+tasks.matching { it.name == "assembleDebug" }.configureEach { finalizedBy(copyApkToDesktop) }

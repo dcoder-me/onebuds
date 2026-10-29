@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.budsbattery.R
 import com.example.budsbattery.bt.PairedDevice
 import com.example.budsbattery.service.startBatteryRead
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -64,23 +65,31 @@ fun BudsChip(modifier: Modifier = Modifier) {
     val link: (PairedDevice) -> Unit = { found ->
         linkBuds(context, found.address, { sender -> linkLauncher.launch(IntentSenderRequest.Builder(sender).build()) }, onLinked)
     }
-    LifecycleResumeEffect(Unit) {
-        val job = scope.launch {
-            // The audio profiles come up a moment after the Bluetooth link, so a first miss is retried
-            for (attempt in 1..DETECT_ATTEMPTS) {
-                refresh()
-                if (buds != null || attempt == DETECT_ATTEMPTS) break
-                delay(DETECT_WAIT_MS)
-            }
-            // Android's start-from-background rule lets the sync start on connect only for linked buds
-            val found = buds
-            if (found != null && !linked && !askedToLink) {
-                askedToLink = true
-                link(found)
-            }
+    val detectAndLink: suspend () -> Unit = {
+        // The audio profiles come up a moment after the Bluetooth link, so a first miss is retried
+        for (attempt in 1..DETECT_ATTEMPTS) {
+            refresh()
+            if (buds != null || attempt == DETECT_ATTEMPTS) break
+            delay(DETECT_WAIT_MS)
         }
-        onPauseOrDispose { job.cancel() }
+        // Android's start-from-background rule lets the sync start on connect only for linked buds
+        val found = buds
+        if (found != null && !linked && !askedToLink) {
+            askedToLink = true
+            link(found)
+        }
     }
+    var detecting by remember { mutableStateOf<Job?>(null) }
+    // One detection at a time: a connect sends several profile events, and only the newest answer matters
+    val redetect: () -> Unit = {
+        detecting?.cancel()
+        detecting = scope.launch { detectAndLink() }
+    }
+    LifecycleResumeEffect(Unit) {
+        redetect()
+        onPauseOrDispose { detecting?.cancel() }
+    }
+    BudsConnectionEffect(onChange = redetect)
     val current = buds
     AssistChip(
         modifier = modifier,

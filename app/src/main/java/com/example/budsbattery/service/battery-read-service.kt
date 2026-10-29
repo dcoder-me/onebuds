@@ -44,6 +44,10 @@ private const val TAG = "BatteryReadService"
 private const val DETECT_ATTEMPTS = 6
 private const val DETECT_WAIT_MS = 2_000L
 
+// The audio profile clears about half a second after the link; looking over 1.5 s catches it without
+// mistaking a one-bud link drop, where the profile stays up, for the buds leaving
+private val PROFILE_RECHECK_WAITS_MS = listOf(0L, 250L, 500L, 750L)
+
 // Android drops notification updates above 5 a second, which could lose the newest one; 4 a second stays under
 private const val NOTIFICATION_GAP_MS = 250L
 
@@ -108,7 +112,7 @@ class BatteryReadService : Service() {
     // means the buds are gone; a different address means the other earbud now holds the link
     private suspend fun onLinkDropped() {
         val adapter = getSystemService(BluetoothManager::class.java)?.adapter
-        val buds = adapter?.let { findProfileConnectedBuds(this, it) }
+        val buds = adapter?.let { awaitGone(PROFILE_RECHECK_WAITS_MS) { findProfileConnectedBuds(this, it) } }
         when {
             buds == null -> stopSelf()
             buds.address != budsAddress.value -> {

@@ -13,6 +13,7 @@ import com.example.budsbattery.bt.runMessageStream
 import com.example.budsbattery.bt.runSessionWithTimeout
 import com.example.budsbattery.data.BatteryReading
 import com.example.budsbattery.data.ReadSource
+import com.example.budsbattery.data.routeNeeded
 import com.example.budsbattery.data.shouldAccept
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.awaitCancellation
@@ -79,18 +80,32 @@ private class LiveRoutes(private val context: Context) {
     }
 }
 
+// === NOTE: === The Message Stream reconnected every few seconds beside a working vendor channel, so it runs only
+// while that channel is closed; collectLatest closes the stream the moment the channel answers again
 private suspend fun syncOverMessageStream(adapter: BluetoothAdapter, address: String, routes: LiveRoutes) {
+    routes.open.map { routeNeeded(it, ReadSource.MESSAGE_STREAM) }.distinctUntilChanged().collectLatest { needed ->
+        if (needed) readMessageStream(adapter, address, routes)
+    }
+}
+
+private suspend fun readMessageStream(adapter: BluetoothAdapter, address: String, routes: LiveRoutes) {
     var refusals = 0
     var failures = 0
-    while (refusals < MESSAGE_STREAM_MAX_REFUSALS) {
-        delay(RECONNECT_WAITS_MS[failures.coerceAtMost(RECONNECT_WAITS_MS.lastIndex)])
-        val socket = connectMessageStream(adapter, address)
-        if (socket == null) refusals++
-        val heard = socket != null && runMessageStream(socket) { routes.publish(it, ReadSource.MESSAGE_STREAM) }
+    // Cancelled mid-session when the vendor channel answers; the route must still leave the live set,
+    // or it would hold back the broadcast scan as if it were open
+    try {
+        while (refusals < MESSAGE_STREAM_MAX_REFUSALS) {
+            delay(RECONNECT_WAITS_MS[failures.coerceAtMost(RECONNECT_WAITS_MS.lastIndex)])
+            val socket = connectMessageStream(adapter, address)
+            if (socket == null) refusals++
+            val heard = socket != null && runMessageStream(socket) { routes.publish(it, ReadSource.MESSAGE_STREAM) }
+            routes.closed(ReadSource.MESSAGE_STREAM)
+            failures = if (heard) 0 else failures + 1
+        }
+        Log.d(TAG, "Message Stream refused $MESSAGE_STREAM_MAX_REFUSALS times; other routes only")
+    } finally {
         routes.closed(ReadSource.MESSAGE_STREAM)
-        failures = if (heard) 0 else failures + 1
     }
-    Log.d(TAG, "Message Stream refused $MESSAGE_STREAM_MAX_REFUSALS times; other routes only")
 }
 
 private suspend fun syncOverVendorChannel(
@@ -129,8 +144,8 @@ private suspend fun syncOverFastPair(context: Context, adapter: BluetoothAdapter
         Log.d(TAG, "No scan permission; skipping the Fast Pair broadcast")
         return
     }
-    routes.open.map { open -> open.any { it.direct } }.distinctUntilChanged().collectLatest { directOpen ->
-        if (!directOpen) scanFastPair(adapter, refreshes, routes)
+    routes.open.map { routeNeeded(it, ReadSource.FAST_PAIR_ADVERT) }.distinctUntilChanged().collectLatest { needed ->
+        if (needed) scanFastPair(adapter, refreshes, routes)
     }
 }
 

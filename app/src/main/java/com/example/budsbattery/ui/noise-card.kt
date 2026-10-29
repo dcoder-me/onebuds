@@ -7,7 +7,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.example.budsbattery.data.BatteryState
 import com.example.budsbattery.data.NoiseMode
 import com.example.budsbattery.data.batteryStateFlow
@@ -30,13 +36,13 @@ import kotlinx.coroutines.delay
 private const val TITLE = "Noise control"
 private const val CONNECT_FIRST = "Connect your buds first"
 private const val LABEL_MS = 220
+private val CARD_PADDING = 20.dp
+private val SECTION_GAP = 16.dp
 
 // A pick shows at once; if the buds haven't confirmed it by then, the knob returns to what they report
 private const val PICK_TIMEOUT_MS = 2_500L
 
-/**
- * Noise control card: the mode pill and the name of the chosen mode.
- */
+/** Noise control on the app screen: the mode pill and the name of the chosen mode. */
 @Composable
 fun NoiseCard() {
     val context = LocalContext.current
@@ -51,16 +57,23 @@ fun NoiseCard() {
     }
     val shown = pending ?: reported
 
-    PanelCardHeader(TITLE, formatNoiseSubtitle(state).takeIf { state.connected } ?: CONNECT_FIRST)
-    NoiseSelector(
-        selected = shown,
-        enabled = state.connected,
-        onSelect = { mode ->
-            pending = mode
-            requestNoiseMode(mode)
-        },
-    )
-    ModeName(shown)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(modifier = Modifier.padding(CARD_PADDING), verticalArrangement = Arrangement.spacedBy(SECTION_GAP)) {
+            PanelCardHeader(TITLE, if (state.connected) formatNoiseSubtitle(state) else CONNECT_FIRST)
+            NoiseSelector(
+                selected = shown,
+                enabled = state.connected,
+                onSelect = { mode ->
+                    pending = mode
+                    requestNoiseMode(mode)
+                },
+            )
+            ModeName(shown)
+        }
+    }
 }
 
 // The name slides in from the side the knob moved toward, so the text follows the motion
@@ -77,11 +90,18 @@ private fun ModeName(mode: NoiseMode?) {
         modifier = Modifier.fillMaxWidth(),
         label = "mode name",
     ) { target ->
-        Text(
-            text = target?.let(::noiseLabel).orEmpty(),
-            style = MaterialTheme.typography.titleSmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = target?.let(::noiseLabel).orEmpty(),
+                style = MaterialTheme.typography.titleSmall,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = target?.let(::noiseHint).orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

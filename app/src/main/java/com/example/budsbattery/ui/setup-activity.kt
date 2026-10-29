@@ -27,7 +27,7 @@ private val SCREEN_PADDING = 16.dp
 private val SECTION_SPACING = 12.dp
 private val HEADER_TOP_PADDING = 8.dp
 
-/** The app screen: buds on top right, live battery, then on/off settings. Also opens from the tile's long-press. */
+/** The app screen: buds on top right, live battery, noise control, then on/off settings. Also opens from the tile's long-press. */
 class SetupActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Android 15+ always draws behind the system bars, so the screen pads itself instead
@@ -58,6 +58,7 @@ private fun SetupScreen() {
             }
             PermissionCard()
             BatteryCard()
+            NoiseCard()
             SettingsCard()
         }
     }

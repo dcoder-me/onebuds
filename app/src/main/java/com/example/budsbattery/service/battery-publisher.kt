@@ -12,7 +12,6 @@ import com.example.budsbattery.data.saveBudInCase
 import com.example.budsbattery.data.saveReading
 import com.example.budsbattery.ui.BudsTileService
 import com.example.budsbattery.ui.BudsWidget
-import com.example.budsbattery.ui.NoiseTileService
 import com.example.budsbattery.ui.updateBatteryNotification
 
 /**
@@ -55,6 +54,5 @@ suspend fun refreshSurfaces(context: Context) {
  */
 suspend fun refreshHomeSurfaces(context: Context) {
     TileService.requestListeningState(context, ComponentName(context, BudsTileService::class.java))
-    TileService.requestListeningState(context, ComponentName(context, NoiseTileService::class.java))
     BudsWidget().updateAll(context)
 }

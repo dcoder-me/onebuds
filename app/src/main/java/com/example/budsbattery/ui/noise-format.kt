@@ -28,7 +28,19 @@ fun noiseLabel(mode: NoiseMode): String = when (mode) {
 }
 
 /**
- * Builds the noise tile subtitle.
+ * Says in a few words what a noise mode does to outside sound.
+ *
+ * @param mode - noise mode
+ * @returns one short line such as "Blocks outside sound"
+ */
+fun noiseHint(mode: NoiseMode): String = when (mode) {
+    NoiseMode.NOISE_CANCELLING -> "Blocks outside sound"
+    NoiseMode.OFF -> "Plain sound, saves battery"
+    NoiseMode.TRANSPARENCY -> "Lets outside sound in"
+}
+
+/**
+ * Builds the noise card's status line.
  *
  * @param state - saved state
  * @returns the mode's name, "Reading…" until the buds report it, or "Not connected"
@@ -39,7 +51,7 @@ fun formatNoiseSubtitle(state: BatteryState): String = when {
 }
 
 /**
- * Picks the icon of a noise mode. The tile and the selector share it.
+ * Picks the icon of a noise mode.
  *
  * @param mode - noise mode
  * @returns a drawable resource id

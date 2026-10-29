@@ -9,7 +9,7 @@ import org.junit.Test
 class NoiseFormatTest {
 
     @Test
-    fun `tile names the mode the buds report`() {
+    fun `card names the mode the buds report`() {
         val state = BatteryState(snapshot = null, connected = true, noiseMode = NoiseMode.TRANSPARENCY)
 
         assertEquals(NoiseMode.TRANSPARENCY, noiseModeOf(state))
@@ -17,7 +17,7 @@ class NoiseFormatTest {
     }
 
     @Test
-    fun `tile waits for the buds before naming a mode`() {
+    fun `card waits for the buds before naming a mode`() {
         assertEquals("Reading…", formatNoiseSubtitle(BatteryState(snapshot = null, connected = true)))
     }
 
@@ -27,5 +27,13 @@ class NoiseFormatTest {
 
         assertNull(noiseModeOf(state))
         assertEquals("Not connected", formatNoiseSubtitle(state))
+    }
+
+    @Test
+    fun `every mode has its own hint`() {
+        val hints = NoiseMode.entries.map(::noiseHint)
+
+        assert(hints.none(String::isBlank))
+        assertEquals(hints.size, hints.toSet().size)
     }
 }

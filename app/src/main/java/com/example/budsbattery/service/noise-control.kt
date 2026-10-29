@@ -4,7 +4,7 @@ import com.example.budsbattery.data.NoiseMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-// === NOTE: === The tile, popup and sync share one process, so a plain flow carries a pick to the open channel.
+// === NOTE: === The app screen and sync share one process, so a plain flow carries a pick to the open channel.
 // No replay: a pick made while no channel is open is dropped, and the selector falls back to what the buds report
 private val noisePicks = MutableSharedFlow<NoiseMode>(extraBufferCapacity = 1)
 

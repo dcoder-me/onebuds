@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "buds-battery"
+rootProject.name = "onebuds"
 include(":app")

@@ -19,8 +19,8 @@ android {
         // === NOTE: === Android 14 is the first version with the companion presence APIs this app needs
         minSdk = 34
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     signingConfigs {

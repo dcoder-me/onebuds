@@ -1,6 +1,23 @@
+<div align="center">
+
+<img src="docs/images/logo.svg" width="120" alt="OneBuds logo">
+
 # OneBuds
 
 **Your Realme Buds T310 battery and noise control, right where you look.**
+
+[![Latest release](https://img.shields.io/github/v/release/dcoder-me/onebuds?label=version&color=4A5D8F)](../../releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/dcoder-me/onebuds/total?color=4A5D8F)](../../releases)
+![Android 14+](https://img.shields.io/badge/Android-14%2B-3DDC84?logo=android&logoColor=white)
+![No internet permission](https://img.shields.io/badge/internet-not%20used-16201D)
+
+### [⬇ Download the APK](../../releases/latest)
+
+| Light | Dark | In action |
+| :---: | :---: | :---: |
+| <img src="docs/images/screenshot-light.png" width="240" alt="Battery and noise control, light mode"> | <img src="docs/images/screenshot-dark.png" width="240" alt="Battery and noise control, dark mode"> | <img src="docs/images/demo.gif" width="240" alt="Demo: buds connect and the noise mode switches"> |
+
+</div>
 
 OneBuds shows your earbuds' battery and switches noise modes without opening the bulky official app. It wakes up on its own when the buds connect and goes quiet when they leave.
 
@@ -44,6 +61,12 @@ Protocol notes: [docs/protocol/realme-link-tl-protocol.md](docs/protocol/realme-
 ./gradlew assembleDebug     # debug APK in app/build/outputs/apk/debug/
 ./gradlew assembleRelease   # signed only if keystore.properties exists
 ./gradlew test              # unit tests
+```
+
+No buds at hand? Debug builds can fill in sample buds for screenshots:
+
+```bash
+adb shell am broadcast -n com.example.budsbattery/.DemoDataReceiver --es noise TRANSPARENCY
 ```
 
 Release signing reads `keystore.properties` from the project root (git-ignored):
